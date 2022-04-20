@@ -24,7 +24,7 @@ class BmStringRepTest(unittest.TestCase):
         self.assertIn('Tom', self.tool.words)
 
     def test_two_pairs_quation(self):
-        line = 'map["name"] = \"Tom\";'
+        line = 'map["name"] = "Tom";'
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'map[pfnName] = pfnTom;')
         self.assertIn('Tom', self.tool.words)

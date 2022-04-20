@@ -5,26 +5,27 @@ class StringRep:
 
     def __init__(self) -> None:
         self.words = set()
+        self.matchObj = re.compile(r'(".+?")')
 
     def get_new_word(self, word) -> str:
         return  f"pfn{word[0].upper()}{word[1:]}"
+
+    def replace(self, match_obj):
+        if match_obj.group(0) is not None:
+            word = match_obj.group(0)[1:-1] # Remove the " in the first and end
+            self.words.add(word)
+            return self.get_new_word(word)
+        else:
+            return match_obj.group(0)
 
     def parse(self, line) -> str:
         if re.search(r'#include.+\"(.+)\.h\"', line) or \
             re.search(r'\s.*DBG_WARN', line):
             return line
         else:
-            matchObj = re.match(r'.+\"(.+?)\".*', line, re.M|re.I)
-            if matchObj:
-                word = matchObj.group(1)
-                self.words.add(word)
-                new_word = self.get_new_word(word)
-                # headline = f"static constexpr wchar_t* {newWord} = L\"{word}\";"
-                # print(headline)
-                new_line = re.sub(r'\".+?\"', new_word, line)
-                return new_line
-            else:
-                return line
+            # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847
+            new_line = self.matchObj.sub(self.replace, line)
+            return new_line
 
     def parse_file(self, file):
         filename = Path(file).name
