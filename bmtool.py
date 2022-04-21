@@ -54,9 +54,9 @@ class StringRep:
         return colored_line
 
     def parse(self, line: str, num: int = 0) -> str:
-        if re.search(r'\s*#include.+".+\.h"', line) or \
-           re.search(r'\s*//', line) or \
-           re.search(r'\s*DBG_WARN', line):
+        if re.search(r'^\s*#include.+".+\.h"', line) or \
+            re.search(r'^\s*[//,"]', line) or \
+            re.search(r'^\s*DBG_WARN', line):
             return line
         else:
             # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847

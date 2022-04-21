@@ -23,6 +23,12 @@ class StringRep_parse_test(unittest.TestCase):
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
+    def test_ignore_quotation_started_line(self):
+        line = '  "Tom"'
+        newline = self.tool.parse(line)
+        self.assertEqual(line, newline)
+        self.assertEqual(0, len(self.tool.words))
+
     def test_ignore_sentence_line(self):
         line = 'std::string name = "Tom jumps");'
         newline = self.tool.parse(line)
