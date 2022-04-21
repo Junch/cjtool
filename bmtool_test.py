@@ -18,28 +18,34 @@ class BmStringRepTest(unittest.TestCase):
         self.assertEqual(line, newline)
 
     def test_ignore_commented_line(self):
-        line = '// std::wstring name = "Tom";'
+        line = '// std::string name = "Tom";'
         newline = self.tool.parse(line)
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
     def test_ignore_sentence_line(self):
-        line = 'std::wstring name = "Tom jumps");'
+        line = 'std::string name = "Tom jumps");'
         newline = self.tool.parse(line)
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
     def test_ignore_special_character_line(self):
-        line = 'std::wstring name = "Tom*");'
+        line = 'std::string name = "Tom*");'
         newline = self.tool.parse(line)
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
     def test_one_pair_quotation (self):
-        line = 'std::wstring name = "Tom";'
+        line = 'std::string name = "Tom";'
+        new_line = self.tool.parse(line)
+        self.assertEqual(new_line, 'std::string name = pStrTom;')
+        self.assertIn('Tom', self.tool.words)
+
+    def test_wide_character (self):
+        line = 'std::wstring name = L"Tom";'
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'std::wstring name = pStrTom;')
-        self.assertIn('Tom', self.tool.words)
+        self.assertIn('Tom', self.tool.wide_words)
 
     def test_two_pairs_quation(self):
         line = 'map["name"] = "Tom";'
@@ -55,8 +61,8 @@ class BmStringRepTest(unittest.TestCase):
         self.assertIn('name', self.tool.words)
 
     def test_the_prefix (self):
-        line = 'std::wstring name = "Tom";'
+        line = 'std::string name = "Tom";'
         self.tool.setPrefix('p')
         new_line = self.tool.parse(line)
-        self.assertEqual(new_line, 'std::wstring name = pTom;')
+        self.assertEqual(new_line, 'std::string name = pTom;')
         self.assertIn('Tom', self.tool.words)

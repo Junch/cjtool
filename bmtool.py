@@ -4,8 +4,10 @@ from pathlib import Path
 class StringRep:
 
     def __init__(self, prefix: str = 'pStr') -> None:
-        self.words = set() # matched words
-        self.matchObj = re.compile(r'("[a-zA-Z_]+\w+?")')
+        self.words = set()       # matched words
+        self.matchobj = re.compile(r'(L?"[a-zA-Z_]+\w+?")')
+
+        self.wide_words = set()  # matched words with wide characters
         self.prefix = prefix
 
     def setPrefix(self, prefix : str) -> None:
@@ -15,13 +17,17 @@ class StringRep:
         return f"{self.prefix}{word[0].upper()}{word[1:]}"
 
     def replace(self, match_obj) -> str:
-        if match_obj.group(0) is not None:
-            word = match_obj.group(0)[1:-1] # Remove the " in the first and end
+        content = match_obj.group(0)
+        if content is None:
+            return content
 
-            self.words.add(word)
-            return self.get_new_word(word)
+        if content[0] == 'L':     # wide characters
+            word = content[2:-1]  # remove the L" in the start and " in the end
+            self.wide_words.add(word)
         else:
-            return match_obj.group(0)
+            word = content[1:-1]  # remove the " in the start and " in the end
+            self.words.add(word)
+        return self.get_new_word(word)
 
     def print_line(self, line, num) -> None:
         print(f"{num}:{line[:-1]}")
@@ -33,7 +39,7 @@ class StringRep:
             return line
         else:
             # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847
-            new_line = self.matchObj.sub(self.replace, line)
+            new_line = self.matchobj.sub(self.replace, line)
             if new_line != line:
                 self.print_line(line, num)
             return new_line
