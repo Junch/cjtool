@@ -1,5 +1,7 @@
 import re
 from pathlib import Path
+from colorama import init, Fore, Back, Style
+init()
 
 class StringRep:
 
@@ -9,6 +11,7 @@ class StringRep:
 
         self.wide_words = set()  # matched words with wide characters
         self.prefix = prefix
+        self.span_buffer = []
 
     def setPrefix(self, prefix : str) -> None:
         self.prefix = prefix
@@ -16,11 +19,15 @@ class StringRep:
     def get_new_word(self, word) -> str:
         return f"{self.prefix}{word[0].upper()}{word[1:]}"
 
+    def clear_span_buffer(self) -> None:
+        self.span_buffer.clear()
+
     def replace(self, match_obj) -> str:
         content = match_obj.group(0)
         if content is None:
             return content
 
+        self.span_buffer.append(match_obj.span())
         if content[0] == 'L':     # wide characters
             word = content[2:-1]  # remove the L" in the start and " in the end
             self.wide_words.add(word)
@@ -30,7 +37,22 @@ class StringRep:
         return self.get_new_word(word)
 
     def print_line(self, line, num) -> None:
-        print(f"{num}:{line[:-1]}")
+        arr = [0]
+        for span in self.span_buffer:
+            arr.append(span[0])
+            arr.append(span[1])
+
+        # https://stackoverflow.com/questions/10851445/splitting-a-string-by-list-of-indices
+        colored_line = f"{Fore.RED}{num}{Fore.WHITE}:"
+        parts = [line[i:j] for i,j in zip(arr, arr[1:]+[None])]
+        for index, part in enumerate(parts):
+            if index % 2 == 0:
+                part = f'{Fore.WHITE}{part}'
+            else:
+                part =  f'{Fore.GREEN}{part}'
+            colored_line = colored_line + part
+
+        print(colored_line[:-1])
 
     def parse(self, line: str, num: int = 0) -> str:
         if re.search(r'\s*#include.+".+\.h"', line) or \
@@ -42,6 +64,7 @@ class StringRep:
             new_line = self.matchobj.sub(self.replace, line)
             if new_line != line:
                 self.print_line(line, num)
+                self.clear_span_buffer()
             return new_line
 
     def parse_file(self, file) -> None:
