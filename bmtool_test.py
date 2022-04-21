@@ -1,8 +1,8 @@
 import unittest
 from bmtool import *
-import sys
+from colorama import Fore
 
-class BmStringRepTest(unittest.TestCase):
+class StringRep_parse_test(unittest.TestCase):
 
     def setUp(self):
         self.tool = StringRep()
@@ -66,3 +66,14 @@ class BmStringRepTest(unittest.TestCase):
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'std::string name = pTom;')
         self.assertIn('Tom', self.tool.words)
+
+class StringRep_get_colored_line_test(unittest.TestCase):
+
+    def setUp(self):
+        self.tool = StringRep()
+
+    def test_simple(self):
+        line = '  std::string name = "Tom";'
+        self.tool.span_buffer=[(21, 26)]
+        colored_line = self.tool.get_colored_line(line, 1)
+        self.assertEqual(colored_line, f'{Fore.RED}1{Fore.WHITE}:{Fore.WHITE}  std::string name = {Fore.GREEN}"Tom"{Fore.WHITE};')

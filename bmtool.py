@@ -36,7 +36,7 @@ class StringRep:
             self.words.add(word)
         return self.get_new_word(word)
 
-    def print_line(self, line, num) -> None:
+    def get_colored_line(self, line, num) -> str:
         arr = [0]
         for span in self.span_buffer:
             arr.append(span[0])
@@ -51,8 +51,7 @@ class StringRep:
             else:
                 part =  f'{Fore.GREEN}{part}'
             colored_line = colored_line + part
-
-        print(colored_line[:-1])
+        return colored_line
 
     def parse(self, line: str, num: int = 0) -> str:
         if re.search(r'\s*#include.+".+\.h"', line) or \
@@ -63,7 +62,7 @@ class StringRep:
             # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847
             new_line = self.matchobj.sub(self.replace, line)
             if new_line != line:
-                self.print_line(line, num)
+                print(self.get_colored_line(line, num))
                 self.clear_span_buffer()
             return new_line
 
@@ -73,7 +72,7 @@ class StringRep:
         with open(newfile, "w") as nf:  
             with open(file, 'r') as f:
                 for num, line in enumerate(f, 1): # start count from 1
-                    new_line = self.parse(line, num)
+                    new_line = self.parse(line.rstrip(), num)
                     nf.write(new_line)
 
 def main():
