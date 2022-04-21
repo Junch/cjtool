@@ -3,12 +3,16 @@ from pathlib import Path
 
 class StringRep:
 
-    def __init__(self) -> None:
-        self.words = set()
+    def __init__(self, prefix: str = 'pStr') -> None:
+        self.words = set() # matched words
         self.matchObj = re.compile(r'("[a-zA-Z_]+\w+?")')
+        self.prefix = prefix
+
+    def setPrefix(self, prefix : str) -> None:
+        self.prefix = prefix
 
     def get_new_word(self, word) -> str:
-        return  f"pfn{word[0].upper()}{word[1:]}"
+        return f"{self.prefix}{word[0].upper()}{word[1:]}"
 
     def replace(self, match_obj) -> str:
         if match_obj.group(0) is not None:

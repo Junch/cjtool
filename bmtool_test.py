@@ -38,18 +38,25 @@ class BmStringRepTest(unittest.TestCase):
     def test_one_pair_quotation (self):
         line = 'std::wstring name = "Tom";'
         new_line = self.tool.parse(line)
-        self.assertEqual(new_line, 'std::wstring name = pfnTom;')
+        self.assertEqual(new_line, 'std::wstring name = pStrTom;')
         self.assertIn('Tom', self.tool.words)
 
     def test_two_pairs_quation(self):
         line = 'map["name"] = "Tom";'
         new_line = self.tool.parse(line)
-        self.assertEqual(new_line, 'map[pfnName] = pfnTom;')
+        self.assertEqual(new_line, 'map[pStrName] = pStrTom;')
         self.assertIn('Tom', self.tool.words)
         self.assertIn('name', self.tool.words)
 
     def test_two_pairs_quation_2(self):
         line = 'map["name"] = "Tom Clause";'
         new_line = self.tool.parse(line)
-        self.assertEqual(new_line, 'map[pfnName] = "Tom Clause";')
+        self.assertEqual(new_line, 'map[pStrName] = "Tom Clause";')
         self.assertIn('name', self.tool.words)
+
+    def test_the_prefix (self):
+        line = 'std::wstring name = "Tom";'
+        self.tool.setPrefix('p')
+        new_line = self.tool.parse(line)
+        self.assertEqual(new_line, 'std::wstring name = pTom;')
+        self.assertIn('Tom', self.tool.words)
