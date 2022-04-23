@@ -1,3 +1,5 @@
 # README
 
-The tool is to extracted the raw strings from the C++ code
+Provide some tools in C++ development
+
+- Extracted raw strings from the C++ code
