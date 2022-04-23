@@ -1,5 +1,5 @@
 import unittest
-from ak47.string import StringRep
+from cjtool.stringtool import StringRep
 from colorama import Fore
 
 class StringRep_parse_test(unittest.TestCase):

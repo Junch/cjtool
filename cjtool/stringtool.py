@@ -99,12 +99,16 @@ def main():
                         help="set the cpp file name")
     args = parser.parse_args()
 
-    if args.file is None:
-        parser.print_usage()
-        sys.exit(1)
+    filefullpath = args.file
+    if not Path(filefullpath).is_file():
+        if Path.cwd().joinpath(filefullpath).is_file():
+            filefullpath = Path.cwd().joinpath(filefullpath)
+        else:
+            print(f'{Fore.RED}Error{Fore.WHITE}: File "{args.file}" is not found.')
+            sys.exit(1)
 
     tool = StringRep(prefix=args.prefix, inplace=args.inplace)
-    tool.parse_file(args.file)
+    tool.parse_file(filefullpath)
 
 
 if __name__ == '__main__':
