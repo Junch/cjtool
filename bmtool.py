@@ -1,19 +1,25 @@
 import re
 from pathlib import Path
-from colorama import init, Fore, Back, Style
+import argparse
+from shutil import *
+import shutil
+import sys
+from colorama import init, Fore
 init()
+
 
 class StringRep:
 
-    def __init__(self, prefix: str = 'pStr') -> None:
+    def __init__(self, prefix: str = 'pStr', inplace: bool = False) -> None:
         self.words = set()       # matched words
+        self.wide_words = set()  # matched words with wide characters
         self.matchobj = re.compile(r'(L?"[a-zA-Z_]+\w+?")')
 
-        self.wide_words = set()  # matched words with wide characters
         self.prefix = prefix
+        self.inplace = inplace
         self.span_buffer = []
 
-    def setPrefix(self, prefix : str) -> None:
+    def setPrefix(self, prefix: str) -> None:
         self.prefix = prefix
 
     def get_new_word(self, word) -> str:
@@ -44,19 +50,19 @@ class StringRep:
 
         # https://stackoverflow.com/questions/10851445/splitting-a-string-by-list-of-indices
         colored_line = f"{Fore.RED}{num}{Fore.WHITE}:"
-        parts = [line[i:j] for i,j in zip(arr, arr[1:]+[None])]
+        parts = [line[i:j] for i, j in zip(arr, arr[1:]+[None])]
         for index, part in enumerate(parts):
             if index % 2 == 0:
                 part = f'{Fore.WHITE}{part}'
             else:
-                part =  f'{Fore.GREEN}{part}'
+                part = f'{Fore.GREEN}{part}'
             colored_line = colored_line + part
         return colored_line
 
     def parse(self, line: str, num: int = 0) -> str:
         if re.search(r'^\s*#include.+".+\.h"', line) or \
-            re.search(r'^\s*[//,"]', line) or \
-            re.search(r'^\s*DBG_WARN', line):
+                re.search(r'^\s*[//,"]', line) or \
+                re.search(r'^\s*DBG_WARN', line):
             return line
         else:
             # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847
@@ -66,18 +72,40 @@ class StringRep:
                 self.clear_span_buffer()
             return new_line
 
-    def parse_file(self, file) -> None:
-        filename = Path(file).name
-        newfile = Path(file).with_name(f"{filename}.bak")
-        with open(newfile, "w") as nf:  
-            with open(file, 'r') as f:
-                for num, line in enumerate(f, 1): # start count from 1
-                    new_line = self.parse(line.rstrip(), num)
-                    nf.write(new_line)
+    def parse_file(self, filefullpath) -> None:
+        file_data = ''
+        with open(filefullpath, 'r') as f:
+            for num, line in enumerate(f, 1):  # start count from 1
+                new_line = self.parse(line.rstrip(), num)
+                file_data = file_data + new_line + '\n'
+
+        if self.inplace:
+            filename = Path(filefullpath).name
+            newfilepath = Path(filefullpath).with_name(f"{filename}.bak")
+            shutil.copyfile(filefullpath, newfilepath)
+
+            with open(filefullpath, 'w') as f:
+                f.write(file_data)
+
 
 def main():
-    tool = StringRep()
-    tool.parse_file(r"D:\jinja2_study\filedata.cpp")
+    parser = argparse.ArgumentParser()
+    parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
+    parser.add_argument('-i', '--inplace', dest='inplace',
+                        action='store_true', help="replace the file in place")
+    parser.add_argument('-p', '--prefix', default='pStr',
+                        help="set the prefix for raw string")
+    parser.add_argument('-f', '--file', required=True,
+                        help="set the cpp file name")
+    args = parser.parse_args()
+
+    if args.file is None:
+        parser.print_usage()
+        sys.exit(1)
+
+    tool = StringRep(prefix=args.prefix, inplace=args.inplace)
+    tool.parse_file(args.file)
+
 
 if __name__ == '__main__':
     main()
