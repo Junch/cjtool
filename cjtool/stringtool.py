@@ -1,19 +1,21 @@
 import re
 from pathlib import Path
 import argparse
-from shutil import *
 import shutil
 import sys
-from turtle import back
 import pyperclip
-from colorama import init, Fore, Back
+from colorama import init, Fore
+
 init()
 
 
 class StringRep:
 
-    def __init__(self, prefix: str = 'pStr', inplace: bool = False, capitalize: bool = False) -> None:
-        self.words = set()       # matched words
+    def __init__(self,
+                 prefix: str = 'pStr',
+                 inplace: bool = False,
+                 capitalize: bool = False) -> None:
+        self.words = set()  # matched words
         self.wide_words = set()  # matched words with wide characters
         self.matchobj = re.compile(r'(L?"[a-zA-Z_]+\w+?")')
 
@@ -37,7 +39,7 @@ class StringRep:
             return content
 
         self.span_buffer.append(match_obj.span())
-        if content[0] == 'L':     # wide characters
+        if content[0] == 'L':  # wide characters
             word = content[2:-1]  # remove the L" in the start and " in the end
             self.wide_words.add(word)
         else:
@@ -53,7 +55,7 @@ class StringRep:
 
         # https://stackoverflow.com/questions/10851445/splitting-a-string-by-list-of-indices
         colored_line = f"{Fore.RED}{num}{Fore.RESET}:"
-        parts = [line[i:j] for i, j in zip(arr, arr[1:]+[None])]
+        parts = [line[i:j] for i, j in zip(arr, arr[1:] + [None])]
         for index, part in enumerate(parts):
             if index % 2 == 0:
                 part = f'{Fore.RESET}{part}'
@@ -102,7 +104,8 @@ class StringRep:
             pyperclip.copy(content)
 
             print(
-                f"{Fore.RED}NOTE{Fore.RESET}: The content above has been copied to the clipboard.")
+                f"{Fore.RED}NOTE{Fore.RESET}: The content above has been copied to the clipboard."
+            )
 
     def get_bak_name(self, filefullpath: str) -> str:
         filename = Path(filefullpath).name
@@ -138,13 +141,21 @@ class StringRep:
 def main():
     parser = argparse.ArgumentParser()
     parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
-    parser.add_argument('-i', '--inplace',
-                        action='store_true', help="replace the file in place")
-    parser.add_argument('-c', '--capitalize', action='store_true',
+    parser.add_argument('-i',
+                        '--inplace',
+                        action='store_true',
+                        help="replace the file in place")
+    parser.add_argument('-c',
+                        '--capitalize',
+                        action='store_true',
                         help="Capitalize the captured word")
-    parser.add_argument('-p', '--prefix', default='pStr',
+    parser.add_argument('-p',
+                        '--prefix',
+                        default='pStr',
                         help="set the prefix for raw string")
-    parser.add_argument('-f', '--file', required=True,
+    parser.add_argument('-f',
+                        '--file',
+                        required=True,
                         help="set the cpp file name")
     args = parser.parse_args()
 
@@ -153,10 +164,13 @@ def main():
         if Path.cwd().joinpath(filefullpath).is_file():
             filefullpath = Path.cwd().joinpath(filefullpath)
         else:
-            print(f'{Fore.RED}Error{Fore.RESET}: File "{args.file}" is not found.')
+            print(
+                f'{Fore.RED}Error{Fore.RESET}: File "{args.file}" is not found.'
+            )
             sys.exit(1)
 
-    tool = StringRep(prefix=args.prefix, inplace=args.inplace,
+    tool = StringRep(prefix=args.prefix,
+                     inplace=args.inplace,
                      capitalize=args.capitalize)
     tool.parse_file(filefullpath)
 

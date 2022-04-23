@@ -2,6 +2,7 @@ import unittest
 from cjtool.stringtool import StringRep
 from colorama import Fore
 
+
 class StringRep_parse_test(unittest.TestCase):
 
     def setUp(self):
@@ -41,13 +42,13 @@ class StringRep_parse_test(unittest.TestCase):
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
-    def test_one_pair_quotation (self):
+    def test_one_pair_quotation(self):
         line = 'std::string name = "Tom";'
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'std::string name = pStrTom;')
         self.assertIn('Tom', self.tool.words)
 
-    def test_wide_character (self):
+    def test_wide_character(self):
         line = 'std::wstring name = L"Tom";'
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'std::wstring name = pStrTom;')
@@ -66,12 +67,13 @@ class StringRep_parse_test(unittest.TestCase):
         self.assertEqual(new_line, 'map[pStrName] = "Tom Clause";')
         self.assertIn('name', self.tool.words)
 
-    def test_the_prefix (self):
+    def test_the_prefix(self):
         line = 'std::string name = "Tom";'
         self.tool.setPrefix('p')
         new_line = self.tool.parse(line)
         self.assertEqual(new_line, 'std::string name = pTom;')
         self.assertIn('Tom', self.tool.words)
+
 
 class StringRep_get_colored_line_test(unittest.TestCase):
 
@@ -80,6 +82,9 @@ class StringRep_get_colored_line_test(unittest.TestCase):
 
     def test_simple(self):
         line = '  std::string name = "Tom";'
-        self.tool.span_buffer=[(21, 26)]
+        self.tool.span_buffer = [(21, 26)]
         colored_line = self.tool.get_colored_line(line, 1)
-        self.assertEqual(colored_line, f'{Fore.RED}1{Fore.WHITE}:{Fore.WHITE}  std::string name = {Fore.GREEN}"Tom"{Fore.WHITE};')
+        self.assertEqual(
+            colored_line,
+            f'{Fore.RED}1{Fore.RESET}:{Fore.RESET}  std::string name = {Fore.GREEN}"Tom"{Fore.RESET};'
+        )
