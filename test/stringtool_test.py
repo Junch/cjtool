@@ -9,12 +9,12 @@ class StringRep_parse_test(unittest.TestCase):
         self.tool = StringRep()
 
     def test_ignore_include_line(self):
-        line = '#include "BmRebarSettingImporter.h"'
+        line = '#include "stdio.h"'
         newline = self.tool.parse(line)
         self.assertEqual(line, newline)
 
     def test_ignore_dbg_warn_line(self):
-        line = '    DBG_WARN_AND_RETURN_VOID_UNLESS(pDoc, L"pDoc为空!", L"sheny-e", L"2022/03/21");'
+        line = '    DBG_WARN(pDoc, L"pDoc为空!", L"Tom", L"2022/03/21");'
         newline = self.tool.parse(line)
         self.assertEqual(line, newline)
 

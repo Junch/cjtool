@@ -23,6 +23,7 @@ class StringRep:
         self.inplace = inplace
         self.capitalize = capitalize
         self.span_buffer = []
+        self.current_file = ''
 
     def setPrefix(self, prefix: str) -> None:
         self.prefix = prefix
@@ -64,6 +65,13 @@ class StringRep:
             colored_line = colored_line + part
         return colored_line
 
+    def on_line_matched(self, line, num):
+        if self.current_file:
+            print(self.current_file)
+            self.current_file = ''
+
+        print(self.get_colored_line(line, num))
+
     def parse(self, line: str, num: int = 0) -> str:
         if re.search(r'^\s*#include.+".+\.h"', line) or \
                 re.search(r'^\s*[//,"]', line) or \
@@ -74,7 +82,7 @@ class StringRep:
             # https://towardsdatascience.com/a-hidden-feature-of-python-regex-you-may-not-know-f00c286f4847
             new_line = self.matchobj.sub(self.replace, line)
             if new_line != line:
-                print(self.get_colored_line(line, num))
+                self.on_line_matched(line, num)
                 self.clear_span_buffer()
             return new_line
 
@@ -122,6 +130,7 @@ class StringRep:
                 return newfilepath
 
     def parse_file(self, filefullpath: str) -> None:
+        self.current_file = filefullpath
         file_data = ''
         with open(filefullpath, 'r', encoding='utf-8') as f:
             for num, line in enumerate(f, 1):  # start count from 1
@@ -132,13 +141,12 @@ class StringRep:
             newfilepath = self.get_bak_name(filefullpath)
             shutil.copyfile(filefullpath, newfilepath)
 
-            with open(filefullpath, 'w') as f:
-                f.write(file_data)
+            with open(filefullpath, 'w', encoding='utf-8') as f:
+                f.write(file_data.encode().decode('utf-8'))
 
     def parse_dir(self, dir_path: str) -> None:
         files = Path(dir_path).rglob('*.cpp')
         for file in files:
-            print(file)
             self.parse_file(file)
 
 
@@ -160,10 +168,16 @@ def main():
                         '--inplace',
                         action='store_true',
                         help="replace the file in place")
-    parser.add_argument('-c',
-                        '--capitalize',
-                        action='store_true',
-                        help="Capitalize the captured word")
+    parser.add_argument(
+        '-c',
+        '--capitalize',
+        action='store_true',
+        help='capitalize the captured word, for example, "tom" turns to "Tom"')
+    parser.add_argument(
+        '-g',
+        '--generate',
+        action='store_true',
+        help='generate the header lines for the captured strings')
     parser.add_argument('-p',
                         '--prefix',
                         default='pStr',
@@ -184,8 +198,9 @@ def main():
     else:
         tool.parse_dir(filepath)
 
-    print('')
-    tool.print_header_lines()
+    if args.generate or args.inplace:
+        print('')
+        tool.print_header_lines()
 
 
 if __name__ == '__main__':

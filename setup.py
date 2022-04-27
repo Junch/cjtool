@@ -2,9 +2,9 @@
 from setuptools import find_packages
 
 setup(name='cjtool',
-    version='0.12',
+    version='0.13',
     description='Provide some tools in C++ development',
-    url='http://github.com/storborg/funniest',
+    url='http://github.com/Junch',
     author='Jun Chen',
     author_email='junc76@gmail.com',
     license='MIT',
