@@ -99,12 +99,17 @@ class StringRep:
 
     def print_header_lines(self):
         content: str = ''
-        for word in self.words:
+
+        words = list(self.words)
+        words.sort()
+        for word in words:
             line = self.get_header_line(word)
             content = content + line + '\n'
             print(line)
 
-        for word in self.wide_words:
+        words = list(self.wide_words)
+        words.sort()
+        for word in words:
             line = self.get_header_line(word, widechar=True)
             content = content + line + '\n'
             print(line)

@@ -5,7 +5,7 @@ Provide some tools in C++ development.
 - Extracted raw strings from the C++ code
 
 
-The source code is [here](https://github.com/Junch/cjtool). The python package is [here](https://pypi.org/manage/project/cjtool/releases/).
+The source code is [here](https://github.com/Junch/cjtool). The python package is [here](https://pypi.org/project/cjtool).
 
 ## 1. How to install
 
