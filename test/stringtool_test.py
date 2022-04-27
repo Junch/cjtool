@@ -42,6 +42,17 @@ class StringRep_parse_test(unittest.TestCase):
         self.assertEqual(line, newline)
         self.assertEqual(0, len(self.tool.words))
 
+    def test_ignore_assign_line(self):
+        line = 'static constexpr wchar_t* pbarNum = L"barNum";'
+        newline = self.tool.parse(line)
+        self.assertEqual(line, newline)
+        self.assertEqual(0, len(self.tool.words))
+
+        line = 'static const char * pbarNum = L"barNum";'
+        newline = self.tool.parse(line)
+        self.assertEqual(line, newline)
+        self.assertEqual(0, len(self.tool.words))
+
     def test_one_pair_quotation(self):
         line = 'std::string name = "Tom";'
         new_line = self.tool.parse(line)

@@ -67,6 +67,7 @@ class StringRep:
     def parse(self, line: str, num: int = 0) -> str:
         if re.search(r'^\s*#include.+".+\.h"', line) or \
                 re.search(r'^\s*[//,"]', line) or \
+                re.search(r'(constexpr|const)\s+(wchar_t|char)\s*\*\s+\w+\s*=', line) or \
                 re.search(r'^\s*DBG_WARN', line):
             return line
         else:
@@ -122,7 +123,7 @@ class StringRep:
 
     def parse_file(self, filefullpath: str) -> None:
         file_data = ''
-        with open(filefullpath, 'r') as f:
+        with open(filefullpath, 'r', encoding='utf-8') as f:
             for num, line in enumerate(f, 1):  # start count from 1
                 new_line = self.parse(line.rstrip(), num)
                 file_data = file_data + new_line + '\n'
@@ -134,8 +135,22 @@ class StringRep:
             with open(filefullpath, 'w') as f:
                 f.write(file_data)
 
-        print('')
-        self.print_header_lines()
+    def parse_dir(self, dir_path: str) -> None:
+        files = Path(dir_path).rglob('*.cpp')
+        for file in files:
+            print(file)
+            self.parse_file(file)
+
+
+def adjust_file_path(filename: str) -> str:
+    if Path(filename).is_file() or Path(filename).is_dir():
+        return filename
+
+    newpath = Path.cwd().joinpath(filename)
+    if Path(newpath).is_file() or Path(newpath).is_dir():
+        return newpath
+
+    return None
 
 
 def main():
@@ -153,26 +168,24 @@ def main():
                         '--prefix',
                         default='pStr',
                         help="set the prefix for raw string")
-    parser.add_argument('-f',
-                        '--file',
-                        required=True,
-                        help="set the cpp file name")
+    parser.add_argument('file', help="set the cpp file name")
     args = parser.parse_args()
-
-    filefullpath = args.file
-    if not Path(filefullpath).is_file():
-        if Path.cwd().joinpath(filefullpath).is_file():
-            filefullpath = Path.cwd().joinpath(filefullpath)
-        else:
-            print(
-                f'{Fore.RED}Error{Fore.RESET}: File "{args.file}" is not found.'
-            )
-            sys.exit(1)
 
     tool = StringRep(prefix=args.prefix,
                      inplace=args.inplace,
                      capitalize=args.capitalize)
-    tool.parse_file(filefullpath)
+
+    filepath = adjust_file_path(args.file)
+    if not filepath:
+        print(f'{Fore.RED}Error{Fore.RESET}: File "{args.file}" is not found.')
+        sys.exit(1)
+    elif Path(filepath).is_file():
+        tool.parse_file(filepath)
+    else:
+        tool.parse_dir(filepath)
+
+    print('')
+    tool.print_header_lines()
 
 
 if __name__ == '__main__':
