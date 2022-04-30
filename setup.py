@@ -6,7 +6,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='cjtool',
-      version='0.16',
+      version='0.17',
       description='Provide some tools in C++ development',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -17,6 +17,7 @@ setup(name='cjtool',
       install_requires=['colorama', 'pyperclip'],
       packages=find_packages(exclude=['test']),
       entry_points={
-          'console_scripts': ['stringrep = cjtool.stringtool:main'],
+          'console_scripts':
+          ['stringrep = cjtool.stringtool:main', 'kc = cjtool.debugtool:main'],
       },
       zip_safe=False)

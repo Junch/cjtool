@@ -55,7 +55,7 @@ class StringRep:
             arr.append(span[1])
 
         # https://stackoverflow.com/questions/10851445/splitting-a-string-by-list-of-indices
-        colored_line = f"{Fore.RED}{num}{Fore.RESET}:"
+        colored_line = f'{Fore.RED}{num}{Fore.RESET}:'
         parts = [line[i:j] for i, j in zip(arr, arr[1:] + [None])]
         for index, part in enumerate(parts):
             if index % 2 == 0:
@@ -118,19 +118,19 @@ class StringRep:
             pyperclip.copy(content)
 
             print(
-                f"{Fore.RED}NOTE{Fore.RESET}: The content above has been copied to the clipboard."
+                f'{Fore.RED}NOTE{Fore.RESET}: The content above has been copied to the clipboard.'
             )
 
     def get_bak_name(self, filefullpath: str) -> str:
         filename = Path(filefullpath).name
-        newfilepath = Path(filefullpath).with_name(f"{filename}.bak")
+        newfilepath = Path(filefullpath).with_name(f'{filename}.bak')
         if not newfilepath.is_file() and not newfilepath.is_dir():
             return newfilepath
 
         i = 0
         while True:
             i = i + 1
-            newfilepath = Path(filefullpath).with_name(f"{filename}({i}).bak")
+            newfilepath = Path(filefullpath).with_name(f'{filename}({i}).bak')
             if not newfilepath.is_file() and not newfilepath.is_dir():
                 return newfilepath
 
@@ -172,7 +172,7 @@ def main():
     parser.add_argument('-i',
                         '--inplace',
                         action='store_true',
-                        help="replace the file in place")
+                        help='replace the file in place')
     parser.add_argument(
         '-c',
         '--capitalize',
@@ -186,7 +186,7 @@ def main():
     parser.add_argument('-p',
                         '--prefix',
                         default='pStr',
-                        help="set the prefix for raw string")
+                        help='set the prefix for raw string')
     parser.add_argument('file', help="set the cpp file name")
     args = parser.parse_args()
 
