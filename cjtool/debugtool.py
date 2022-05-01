@@ -51,23 +51,22 @@ def execute_command(proc_name: str, command: str) -> int:
 
     while True:
         # expect_exact()和expect()是一样的，唯一不同的就是它的匹配列表中不再使用正则表达式。
-        index = child.expect(
-            ['^0:000>', '\n', '^[0-9a-fA-F]+`[0-9a-fA-F]+\s', EOF], timeout=5)
-        line = (child.before + child.after).decode()
+        index = child.expect(['^0:000>', b'\n', EOF], timeout=20)
+        after_content = b''
+        if child.after != EOF:
+            after_content = child.after
+        line = child.before + after_content
         if index == 0:
             if first_echo:
                 first_echo = False
             else:
-                child.send('qd')
-                break
+                line += b'qd\n'
+                child.sendline('qd')
         elif index == 2:
-            child.send('\n')
-        elif index == 3:
             break
 
-        if not first_echo:
-            sys.stdout.write(line)
-            sys.stdout.flush()
+        sys.stdout.write(line.decode())
+        sys.stdout.flush()
 
 
 def main():
@@ -80,3 +79,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    #execute_command('cmdline.exe', 'uf cmdline!Num::GetNum')
