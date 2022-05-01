@@ -75,7 +75,7 @@ def main():
     parser.add_argument('process_name', help="set the process name")
     parser.add_argument('command', help="set the windbg command", nargs='+')
     args = parser.parse_args()
-    execute_command(args.process_name, ''.join(args.command))
+    execute_command(args.process_name, ' '.join(args.command))
 
 
 if __name__ == '__main__':
