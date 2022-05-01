@@ -38,6 +38,9 @@ def match_the_deadly_pattern(after_text: str, first_command_part: str) -> bool:
     except ValueError:
         return False
 
+    if len(first_command_part) > 16:
+        first_command_part = first_command_part[-17:]
+
     num1 = int(after_text.replace('`', ''), 16)
     num2 = int(first_command_part[1:], 16)
     return num1 == num2
@@ -85,7 +88,9 @@ def execute_command(proc_name: str, command: str) -> bool:
         elif index == 3:
             if re.search(' cdb: Reading initial command', pre_line) and \
                match_the_deadly_pattern(child.after.decode(), first_command_part):
+                line += b'\n'
                 child.sendline()
+
 
         sys.stdout.write(line.decode())
         sys.stdout.flush()
