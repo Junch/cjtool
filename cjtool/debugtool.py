@@ -63,7 +63,7 @@ def execute_command(proc_name: str, command: str) -> bool:
 
     cmd = f'cdb.exe -c "{command}" -pv -p {processids[0]}'
     child = popen_spawn.PopenSpawn(cmd)
-    first_echo = True
+    need_print_line = False
 
     first_command_part = command.split()[0]
 
@@ -78,11 +78,10 @@ def execute_command(proc_name: str, command: str) -> bool:
             after_content = child.after
         line = child.before + after_content
         if index == 0:
-            if first_echo:
-                first_echo = False
-            else:
+            if need_print_line:
                 line += b'qd\n'
                 child.sendline('qd')
+            need_print_line = not need_print_line
         elif index == 2:
             break  # 唯一正常退出的通道
         elif index == 3:
@@ -91,10 +90,10 @@ def execute_command(proc_name: str, command: str) -> bool:
                 line += b'\n'
                 child.sendline()
 
-
-        sys.stdout.write(line.decode())
-        sys.stdout.flush()
-        pre_line = line.decode()
+        if need_print_line:
+            pre_line = line.decode()
+            sys.stdout.write(pre_line)
+            sys.stdout.flush()
     return True
 
 
