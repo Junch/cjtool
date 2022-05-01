@@ -30,6 +30,19 @@ def get_processid_by_name(proc_name: str) -> list[int]:
     return processids
 
 
+def match_the_deadly_pattern(after_text: str, first_command_part: str) -> bool:
+    # 比如输入命令abc
+    # CDB会反馈00000000`00000bc这个字符串，这种情况下需要发送一个空格键
+    try:
+        int(first_command_part, 16)
+    except ValueError:
+        return False
+
+    num1 = int(after_text.replace('`', ''), 16)
+    num2 = int(first_command_part[1:], 16)
+    return num1 == num2
+
+
 def execute_command(proc_name: str, command: str) -> bool:
     # TODO 仿照下面的例子写单元测试
     # https://github.com/pexpect/pexpect/blob/master/tests/test_popen_spawn.py
@@ -48,6 +61,8 @@ def execute_command(proc_name: str, command: str) -> bool:
     cmd = f'cdb.exe -c "{command}" -pv -p {processids[0]}'
     child = popen_spawn.PopenSpawn(cmd)
     first_echo = True
+
+    first_command_part = command.split()[0]
 
     pre_line = ''
     while True:
@@ -68,7 +83,8 @@ def execute_command(proc_name: str, command: str) -> bool:
         elif index == 2:
             break  # 唯一正常退出的通道
         elif index == 3:
-            if re.search(' cdb: Reading initial command', pre_line):
+            if re.search(' cdb: Reading initial command', pre_line) and \
+               match_the_deadly_pattern(child.after.decode(), first_command_part):
                 child.sendline()
 
         sys.stdout.write(line.decode())
