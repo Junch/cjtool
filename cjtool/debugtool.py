@@ -11,10 +11,7 @@ init()
 def get_processid_by_name(proc_name: str) -> list[int]:
     cmd = f'wmic process where name="{proc_name}" get processid'
 
-    proc = subprocess.Popen(cmd,
-                            shell=True,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     processids = []
     while True:
@@ -52,14 +49,11 @@ def execute_command(proc_name: str, command: str) -> bool:
 
     processids = get_processid_by_name(proc_name)
     if not processids:
-        print(
-            f'{Fore.RED}ERROR{Fore.RESET}: The process "{proc_name}" is not found.'
-        )
+        print(f'{Fore.RED}ERROR{Fore.RESET}: The process "{proc_name}" is not found.')
         return False
     elif len(processids) > 1:
-        print(
-            f'{Fore.YELLOW}WARN{Fore.RESET}: More than one process is found by name "{proc_name}". '
-            'Only the first one will be printed.')
+        print(f'{Fore.YELLOW}WARN{Fore.RESET}: More than one process is found by name "{proc_name}". '
+              'Only the first one will be printed.')
 
     cmd = f'cdb.exe -c "{command}" -pv -p {processids[0]}'
     child = popen_spawn.PopenSpawn(cmd)
@@ -70,9 +64,10 @@ def execute_command(proc_name: str, command: str) -> bool:
     pre_line = ''
     while True:
         # expect_exact()和expect()是一样的，唯一不同的就是它的匹配列表中不再使用正则表达式。
-        index = child.expect(
-            ['^0:000>', b'\n', EOF, b'^[0-9a-fA-F]+`[0-9a-fA-F]+\s'],
-            timeout=20)
+        index = child.expect([
+            '^0:000>', b'\n', EOF, b'^[0-9a-fA-F]+`[0-9a-fA-F]+\s', b'^\*\*\* WARNING:', b"^ Unable to verify checksum for.+\n"
+        ],
+                             timeout=20)
         after_content = b''
         if child.after != EOF:
             after_content = child.after
@@ -89,6 +84,8 @@ def execute_command(proc_name: str, command: str) -> bool:
                match_the_deadly_pattern(child.after.decode(), first_command_part):
                 line += b'\n'
                 child.sendline()
+        elif index == 4 or index == 5:
+            continue  # 过滤 ^*** WARNING:
 
         if need_print_line:
             pre_line = line.decode()
