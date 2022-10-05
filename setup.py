@@ -14,7 +14,7 @@ setup(name='cjtool',
       author='Jun Chen',
       author_email='junc76@gmail.com',
       license='MIT',
-      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd'],
+      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd', 'PyYAML'],
       packages=find_packages(exclude=['test']),
       entry_points={
           'console_scripts':
