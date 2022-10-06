@@ -1,4 +1,4 @@
-from cjtool.common import *
+from common import *
 import signal
 import yaml
 import argparse
@@ -43,7 +43,7 @@ def adjust_file_path(filename: str) -> str:
 def main():
     parser = argparse.ArgumentParser()
     parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
-    parser.add_argument('file', help="set the cpp file name")
+    parser.add_argument('file', help="set the yaml config file")
     args = parser.parse_args()
 
     filepath = adjust_file_path(args.file)

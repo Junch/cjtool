@@ -1,4 +1,5 @@
 import pykd
+import sys
 
 
 class string:

@@ -3,7 +3,7 @@
 import pykd
 import sys
 import re
-import cjtool.stl
+import stl
 from datetime import datetime
 from threading import Thread
 import weakref
@@ -588,8 +588,8 @@ class Debugger(Thread):
                 self.addBreakPointsInModule(mod_name)
             spinner.stop()
             print(f"\nbreakpoints count: {len(self.manager.breakpoints)}")
-            for item in self.manager.breakpoints:
-                print(item.symbol)
+            for index, item in enumerate(self.manager.breakpoints):
+                print(f"{index}: {item.symbol}")
             print("\nStart monitoring")
 
             if self.prelude:
