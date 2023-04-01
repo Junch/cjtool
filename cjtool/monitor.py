@@ -52,7 +52,7 @@ def main():
         exit()
 
     config = None
-    with open(filepath, 'r') as stream:
+    with open(filepath, 'r', encoding='UTF-8') as stream:
         config = yaml.safe_load(stream)
 
         pid = getProcessByName(config['name'])
