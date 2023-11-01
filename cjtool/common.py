@@ -108,7 +108,8 @@ class BaseType:
         for vtab in vftables:
             cmd = "s -[w]d {:x} L?0x7fffffff {:x}".format(addr, vtab)
             if pykd.is64bitSystem():
-                 cmd = "s -[w]q {:x} L?0x7fffffffffffffff {:x}".format(addr, vtab)
+                cmd = "s -[w]q {:x} L?0x7fffffffffffffff {:x}".format(
+                    addr, vtab)
 
             result = pykd.dbgCommand(cmd)
             lines = result.split('\n')
@@ -153,7 +154,7 @@ class BaseType:
         vftables = self.get_vftables()
         cmd = "s -[w]d 0x0 L?0x7fffffff {:x}".format(vftables[0])
         if pykd.is64bitSystem():
-                cmd = "s -[w]q 0x0 L?0x7fffffffffffffff {:x}".format(vftables[0])
+            cmd = "s -[w]q 0x0 L?0x7fffffffffffffff {:x}".format(vftables[0])
 
         result = pykd.dbgCommand(cmd)
         if not result:
@@ -227,7 +228,7 @@ def malloc_string(sz):
     malloc = mallocVar()
     length = 24
     if pykd.is64bitSystem():
-        length = 32 # 0x20
+        length = 32  # 0x20
     strlen = len(sz)
     if (strlen >= 0x10):
         length = strlen + 1 + length
@@ -243,7 +244,7 @@ def malloc_wstring(sz):
     malloc = mallocVar()
     length = 24
     if pykd.is64bitSystem():
-        length = 32 # 0x20
+        length = 32  # 0x20
     strlen = len(sz)
     if (strlen >= 0x8):
         length = (strlen + 1) * 2 + length
@@ -265,7 +266,8 @@ def freeVar():
     # so we need to define prototype manually
     #Void = pykd.typeInfo("Void")
     #PVoid = pykd.typeInfo("Void*")
-    freeProto = pykd.defineFunction(pykd.baseTypes.VoidPtr, pykd.callingConvention.NearC)
+    freeProto = pykd.defineFunction(
+        pykd.baseTypes.VoidPtr, pykd.callingConvention.NearC)
     freeProto.append("ptr", pykd.baseTypes.VoidPtr)
     free = pykd.typedVar(
         freeProto,
@@ -280,21 +282,28 @@ def allocConsole():
     # AllocConsole();
     # freopen("CON", "w", stdout);
     Bool = pykd.typeInfo("Bool")
-    FreeConsole_Type = pykd.defineFunction(Bool, pykd.callingConvention.NearStd)
-    FreeConsole = pykd.typedVar(FreeConsole_Type, pykd.getOffset("KERNELBASE!FreeConsole"))
+    FreeConsole_Type = pykd.defineFunction(
+        Bool, pykd.callingConvention.NearStd)
+    FreeConsole = pykd.typedVar(
+        FreeConsole_Type, pykd.getOffset("KERNELBASE!FreeConsole"))
     FreeConsole()
 
-    AllocConsole_Type = pykd.defineFunction(Bool, pykd.callingConvention.NearStd)
-    AllocConsole = pykd.typedVar(AllocConsole_Type, pykd.getOffset("KERNELBASE!AllocConsole"))
+    AllocConsole_Type = pykd.defineFunction(
+        Bool, pykd.callingConvention.NearStd)
+    AllocConsole = pykd.typedVar(
+        AllocConsole_Type, pykd.getOffset("KERNELBASE!AllocConsole"))
     AllocConsole()
 
     # Get stdout
-    acrt_iob_func_Type = pykd.defineFunction(pykd.baseTypes.VoidPtr, pykd.callingConvention.NearStd)
+    acrt_iob_func_Type = pykd.defineFunction(
+        pykd.baseTypes.VoidPtr, pykd.callingConvention.NearStd)
     acrt_iob_func_Type.append("nStdHandle", pykd.baseTypes.UInt4B)
-    acrt_iob_func = pykd.typedVar(acrt_iob_func_Type, pykd.getOffset("ucrtbase!__acrt_iob_func"))
+    acrt_iob_func = pykd.typedVar(
+        acrt_iob_func_Type, pykd.getOffset("ucrtbase!__acrt_iob_func"))
     stdout = acrt_iob_func(1)
 
-    freopen_Type = pykd.defineFunction(pykd.baseTypes.VoidPtr, pykd.callingConvention.NearStd)
+    freopen_Type = pykd.defineFunction(
+        pykd.baseTypes.VoidPtr, pykd.callingConvention.NearStd)
     freopen_Type.append("filename", pykd.baseTypes.VoidPtr)
     freopen_Type.append("mode", pykd.baseTypes.VoidPtr)
     freopen_Type.append("stream ", pykd.baseTypes.VoidPtr)
@@ -328,6 +337,7 @@ def injectDll(dllpath):
     dvfree(size, addr)
     return handle
 
+
 def ejectDll(handle):
     Bool = pykd.typeInfo("Bool")
     PVoid = pykd.typeInfo("Void*")
@@ -336,6 +346,7 @@ def ejectDll(handle):
     free = pykd.typedVar(freeProto, pykd.getOffset("KERNELBASE!FreeLibrary"))
     ret = free(handle)
     return ret
+
 
 def castAddress(addr):
     vptr = pykd.loadDWords(addr, 1)[0]
@@ -347,9 +358,11 @@ def castAddress(addr):
         typename = match.group(1)
     return pykd.typedVar(typename, addr)
 
+
 def castTypedVar(var):
     addr = var.getAddress()
     return castAddress(addr)
+
 
 class BreakPointType(Enum):
     Normal = 0
@@ -357,9 +370,19 @@ class BreakPointType(Enum):
 
 
 class BreakPointManager(object):
-    def __init__(self):
+    def __init__(self, logfilepath):
         super(BreakPointManager, self).__init__()
         self.breakpoints = []
+        self.logfile = open(logfilepath, 'w', encoding='utf-8')
+
+    def __del__(self):
+        print(f'{self.logfile.name} is saved.')
+        self.logfile.close()
+
+    def writeLog(self, log: str):
+        sys.stdout.write(log)
+        self.logfile.write(log)
+        self.logfile.flush()
 
     def addBreakPoint(self,
                       moduName,
@@ -390,9 +413,14 @@ class BreakPointManager(object):
                 local_str_time = datetime.now().strftime(
                     "%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-                print("{} [{:05x}] <<{}".format(local_str_time,
-                                                pykd.getThreadSystemID(),
-                                                self.symbol))
+                # print("{} [{:05x}] <<{}".format(local_str_time,
+                #                                 pykd.getThreadSystemID(),
+                #                                 self.symbol))
+
+                log = "{} [{:05x}] <<{}\n".format(local_str_time,
+                                                  pykd.getThreadSystemID(),
+                                                  self.symbol)
+                self.start.manager.writeLog(log)
 
                 if self.type == BreakPointType.OneShot:
                     self.start.remove()
@@ -422,11 +450,15 @@ class BreakPointManager(object):
                 if self.callback:
                     ret = self.callback(self)
                     if ret:
-                        strout = "{}".format(ret)
+                        strout = " {}".format(ret)
 
-                sys.stdout.write("{} [{:05x}] >>{} {}\n".format(
+                log = "{} [{:05x}] >>{}{}\n".format(
                     local_str_time, pykd.getThreadSystemID(), self.symbol,
-                    strout))
+                    strout)
+                self.manager.writeLog(log)
+                # sys.stdout.write(log)
+                # self.logfile.write(log)
+                # self.logfile.flush()
 
                 return False
 
@@ -532,12 +564,12 @@ class BPRecord:
 
 
 class Debugger(Thread):
-    def __init__(self, pid=0, path=None, prelude=None):
+    def __init__(self, pid=0, exepath=None, logfilepath=None, prelude=None):
         super(Debugger, self).__init__()
         self.pid = pid
-        self.path = path
+        self.path = exepath
         self.breakpoints = []
-        self.manager = BreakPointManager()
+        self.manager = BreakPointManager(logfilepath)
         self.prelude = prelude
 
     def setPrelude(self, prelude):

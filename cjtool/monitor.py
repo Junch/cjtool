@@ -56,7 +56,8 @@ def main():
         config = yaml.safe_load(stream)
 
         pid = getProcessByName(config['name'])
-        debugger = Debugger(pid, config['path'])
+        logfilepath = Path(filepath).with_suffix('.log')
+        debugger = Debugger(pid, exepath=config['path'], logfilepath=logfilepath)
         debugger.setDaemon(True)
         for bp in config['breakpoints']:
             debugger.addBreakPoint(bp)
