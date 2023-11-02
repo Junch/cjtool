@@ -3,8 +3,9 @@ import sys
 from pathlib import Path
 from common import print_warning
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget
 from PyQt5.Qt import QStandardItemModel, QStandardItem
+from PyQt5.QtCore import *
 
 
 class PairError(Exception):
@@ -56,6 +57,38 @@ class StandardItem(QStandardItem):
         self.setText(txt)
 
 
+class FunctionView(QTreeView):
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setHeaderHidden(True)
+        self.setStyleSheet(
+            "QTreeView::branch {  border-image: url(none.png); }")
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._rightClickMenu)
+        self.bStyleSheetNone = True
+
+    def _rightClickMenu(self, pos):
+        try:
+            self.contextMenu = QMenu()
+            self.actionExpand = self.contextMenu.addAction('全部展开')
+            self.actionExpand.triggered.connect(self.expandAll)
+            self.actionStyleSheet = self.contextMenu.addAction('样式切换')
+            self.actionStyleSheet.triggered.connect(self._styleSheetChange)
+            self.contextMenu.exec_(self.mapToGlobal(pos))  # 随指针的位置显示菜单
+        except Exception as e:
+            print(e)
+
+    def _styleSheetChange(self):
+        if self.bStyleSheetNone:
+            self.setStyleSheet(
+                "QTreeView::branch: {border-image: url(:/vline.png);}")
+        else:
+            self.setStyleSheet(
+                "QTreeView::branch {  border-image: url(none.png); }")
+
+        self.bStyleSheetNone = not self.bStyleSheetNone
+
+
 class AppDemo(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -64,12 +97,17 @@ class AppDemo(QMainWindow):
 
         self._createMenuBar()
 
-        treeView = QTreeView(self)
-        treeView.setHeaderHidden(True)
+        treeView = FunctionView(self)
 
         treeModel = QStandardItemModel()
         rootNode = treeModel.invisibleRootItem()
+        self._fillContent(rootNode)
 
+        treeView.setModel(treeModel)
+        treeView.expandAll()
+        self.setCentralWidget(treeView)
+
+    def _fillContent(self, rootNode):
         filepath = ''
         if (len(sys.argv) == 2):
             filepath = adjust_file_path(sys.argv[1])
@@ -77,15 +115,8 @@ class AppDemo(QMainWindow):
         if filepath:
             self._parse_file(rootNode, filepath)
 
-        treeView.setModel(treeModel)
-        treeView.expandAll()
-        treeView.setStyleSheet(
-            "QTreeView::branch {  border-image: url(none.png); }")
-        self.setCentralWidget(treeView)
-
     def _createMenuBar(self):
         menuBar = self.menuBar()
-        # Creating menus using a QMenu object
         fileMenu = QMenu("&File", self)
         menuBar.addMenu(fileMenu)
 
@@ -125,7 +156,6 @@ def main():
     app = QApplication(sys.argv)
     demo = AppDemo()
     demo.show()
-
     sys.exit(app.exec_())
 
 
