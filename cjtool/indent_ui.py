@@ -61,20 +61,28 @@ class FunctionView(QTreeView):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.setHeaderHidden(True)
-        self.setStyleSheet(
-            "QTreeView::branch {  border-image: url(none.png); }")
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._rightClickMenu)
-        self.bStyleSheetNone = True
+        self.bStyleSheetNone = False
 
     def _rightClickMenu(self, pos):
         try:
             self.contextMenu = QMenu()
-            self.actionExpand = self.contextMenu.addAction('全部展开')
-            self.actionExpand.triggered.connect(self.expandAll)
+
             self.actionStyleSheet = self.contextMenu.addAction('样式切换')
             self.actionStyleSheet.triggered.connect(self._styleSheetChange)
-            self.contextMenu.exec_(self.mapToGlobal(pos))  # 随指针的位置显示菜单
+
+            self.actionExpand = self.contextMenu.addAction('全部展开')
+            self.actionExpand.triggered.connect(self.expandAll)
+
+            arr = ['一级展开', '二级展开', '三级展开', '四级展开']
+            self.actionExpandAction = [None]*4
+            def foo(i): return lambda: self._expandLevel(i+1)
+            for i, mi in enumerate(arr):
+                self.actionExpandAction[i] = self.contextMenu.addAction(mi)
+                self.actionExpandAction[i].triggered.connect(foo(i))
+
+            self.contextMenu.exec_(self.mapToGlobal(pos))
         except Exception as e:
             print(e)
 
@@ -84,9 +92,24 @@ class FunctionView(QTreeView):
                 "QTreeView::branch: {border-image: url(:/vline.png);}")
         else:
             self.setStyleSheet(
-                "QTreeView::branch {  border-image: url(none.png); }")
+                "QTreeView::branch {border-image: url(none.png);}")
 
         self.bStyleSheetNone = not self.bStyleSheetNone
+
+    def _expandLevel(self, nLevel: int):
+        model = self.model()
+        rootNode = model.invisibleRootItem()
+        queue = []
+        queue.append((rootNode, 0))
+        while (queue):
+            elem, level = queue.pop(0)
+            if (level < nLevel):
+                self.setExpanded(elem.index(), True)
+                for row in range(elem.rowCount()):
+                    child = elem.child(row, 0)
+                    queue.append((child, level + 1))
+            elif (level == nLevel):
+                self.setExpanded(elem.index(), False)
 
 
 class AppDemo(QMainWindow):
@@ -114,6 +137,8 @@ class AppDemo(QMainWindow):
 
         if filepath:
             self._parse_file(rootNode, filepath)
+        else:
+            self._parse_file(rootNode, "E:/github/breakpoints/board.log")
 
     def _createMenuBar(self):
         menuBar = self.menuBar()
