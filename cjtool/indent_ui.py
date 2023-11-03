@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from common import print_warning
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, QMessageBox
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import *
 
@@ -55,6 +55,16 @@ class StandardItem(QStandardItem):
         super().__init__()
         self.setEditable(False)
         self.setText(txt)
+        self.count = 1
+
+    def increaseCount(self):
+        self.count += 1
+        txt = self.functionName()
+        self.setText(f'{txt} * {self.count}')
+
+    def functionName(self):
+        arr = self.text().split('*')
+        return arr[0].rstrip()
 
 
 class FunctionView(QTreeView):
@@ -81,6 +91,9 @@ class FunctionView(QTreeView):
             for i, mi in enumerate(arr):
                 self.actionExpandAction[i] = self.contextMenu.addAction(mi)
                 self.actionExpandAction[i].triggered.connect(foo(i))
+
+            self.actionLoopMatch = self.contextMenu.addAction('循环识别')
+            self.actionLoopMatch.triggered.connect(self._loopMatch)
 
             self.contextMenu.exec_(self.mapToGlobal(pos))
         except Exception as e:
@@ -110,6 +123,29 @@ class FunctionView(QTreeView):
                     queue.append((child, level + 1))
             elif (level == nLevel):
                 self.setExpanded(elem.index(), False)
+
+    def _loopMatch(self):
+        model = self.model()
+        rootNode = model.invisibleRootItem()
+        queue = []
+        queue.append(rootNode)
+        nCount = 0
+        while (queue):
+            elem = queue.pop(0)
+            nCount += 1
+            preChild = None
+            row = 0
+            while row < elem.rowCount():
+                child = elem.child(row, 0)
+                if row > 0 and preChild.functionName() == child.text():
+                    elem.removeRow(row)
+                    preChild.increaseCount()
+                else:
+                    row += 1
+                    preChild = child
+                    queue.append(child)
+
+        # QMessageBox.about(self, '提示', f'节点数 {nCount}')
 
 
 class AppDemo(QMainWindow):
