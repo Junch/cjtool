@@ -79,6 +79,12 @@ class FunctionView(QTreeView):
         try:
             self.contextMenu = QMenu()
 
+            indexes = self.selectedIndexes()
+            if len(indexes) > 0:
+                self.actionCopy = self.contextMenu.addAction('复制')
+                self.actionCopy.triggered.connect(self._copy)
+                self.contextMenu.addSeparator()
+
             self.actionStyleSheet = self.contextMenu.addAction('样式切换')
             self.actionStyleSheet.triggered.connect(self._styleSheetChange)
 
@@ -98,6 +104,12 @@ class FunctionView(QTreeView):
             self.contextMenu.exec_(self.mapToGlobal(pos))
         except Exception as e:
             print(e)
+
+    def _copy(self):
+        index = self.selectedIndexes()[0]
+        item = index.model().itemFromIndex(index)
+        clipboard = QApplication.clipboard()
+        clipboard.setText(item.text())
 
     def _styleSheetChange(self):
         if self.bStyleSheetNone:
