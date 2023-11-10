@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from common import print_warning
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, QMessageBox, QHBoxLayout, QTextEdit, QSplitter
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import *
 
@@ -160,23 +160,38 @@ class FunctionView(QTreeView):
         # QMessageBox.about(self, '提示', f'节点数 {nCount}')
 
 
-class AppDemo(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle('流程图')
-        self.resize(500, 700)
+        self.resize(1200, 900)
 
         self._createMenuBar()
 
-        treeView = FunctionView(self)
+        mainWnd = QWidget(self)
+        self.setCentralWidget(mainWnd)
+        layout = QHBoxLayout(self)
+        mainWnd.setLayout(layout)
 
+        splitter = QSplitter(Qt.Horizontal)
+
+        # Left is QTreeView
+        treeView = FunctionView(self)
         treeModel = QStandardItemModel()
         rootNode = treeModel.invisibleRootItem()
         self._fillContent(rootNode)
-
         treeView.setModel(treeModel)
         treeView.expandAll()
-        self.setCentralWidget(treeView)
+
+        # Right is QTextEdit
+        txt  = QTextEdit(self)
+
+        splitter.addWidget(treeView)
+        splitter.addWidget(txt)
+        splitter.setStretchFactor(0, 4)
+        splitter.setStretchFactor(1, 6)
+        layout.addWidget(splitter)
+  
 
     def _fillContent(self, rootNode):
         filepath = ''
@@ -227,7 +242,7 @@ class AppDemo(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    demo = AppDemo()
+    demo = MainWindow()
     demo.show()
     sys.exit(app.exec_())
 
