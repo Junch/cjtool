@@ -9,6 +9,7 @@ from threading import Thread
 import weakref
 from enum import Enum
 import time
+from sourceline import Inspect
 
 
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python/37340245
@@ -370,10 +371,12 @@ class BreakPointType(Enum):
 
 
 class BreakPointManager(object):
-    def __init__(self, logfilepath):
+    def __init__(self, pid, logfilepath):
         super(BreakPointManager, self).__init__()
         self.breakpoints = []
         self.logfile = open(logfilepath, 'w', encoding='utf-8')
+        self.inspect = Inspect(pid)
+        self.lineInfos = []
 
     def __del__(self):
         print(f'{self.logfile.name} is saved.')
@@ -413,10 +416,6 @@ class BreakPointManager(object):
                 local_str_time = datetime.now().strftime(
                     "%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-                # print("{} [{:05x}] <<{}".format(local_str_time,
-                #                                 pykd.getThreadSystemID(),
-                #                                 self.symbol))
-
                 log = "{} [{:05x}] <<{}\n".format(local_str_time,
                                                   pykd.getThreadSystemID(),
                                                   self.symbol)
@@ -427,7 +426,7 @@ class BreakPointManager(object):
                 return False
 
         class StartBreakpoint(pykd.breakpoint):
-            def __init__(self, offset, callback, bptype, manager):
+            def __init__(self, offset, callback, bptype, manager:BreakPointManager):
                 super(StartBreakpoint, self).__init__(offset)
                 self.symbol = pykd.findSymbol(offset)
                 # For debug
@@ -438,6 +437,9 @@ class BreakPointManager(object):
                 self.endBreakPoint = EndBreakpoint(retOffset, self.symbol,
                                                    self.type, self)
                 self.manager = weakref.proxy(manager)
+                lineInfo = self.manager.inspect.GetLineFromAddr64(offset)
+                endLineInfo = self.manager.inspect.GetLineFromAddr64(retOffset)
+                self.manager.lineInfos.append((self.symbol, lineInfo, endLineInfo))
 
             def remove(self):
                 self.manager.removeBreakPoint(self)
@@ -456,10 +458,6 @@ class BreakPointManager(object):
                     local_str_time, pykd.getThreadSystemID(), self.symbol,
                     strout)
                 self.manager.writeLog(log)
-                # sys.stdout.write(log)
-                # self.logfile.write(log)
-                # self.logfile.flush()
-
                 return False
 
         try:
@@ -569,7 +567,7 @@ class Debugger(Thread):
         self.pid = pid
         self.path = exepath
         self.breakpoints = []
-        self.manager = BreakPointManager(logfilepath)
+        self.manager = BreakPointManager(pid, logfilepath)
         self.prelude = prelude
 
     def setPrelude(self, prelude):
@@ -620,8 +618,8 @@ class Debugger(Thread):
                 self.addBreakPointsInModule(mod_name)
             spinner.stop()
             print(f"\nbreakpoints count: {len(self.manager.breakpoints)}")
-            for index, item in enumerate(self.manager.breakpoints):
-                print(f"{index}: {item.symbol}")
+            for index, item in enumerate(self.manager.lineInfos):
+                print(f"{index}: {item[0]} {item[1].FileName}:{item[1].LineNumber}-{item[2].LineNumber}")
             print("\nStart monitoring")
 
             if self.prelude:
