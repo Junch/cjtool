@@ -9,10 +9,14 @@ from threading import Thread
 import weakref
 from enum import Enum
 import time
+import json
+from json import JSONEncoder
 from sourceline import Inspect
-
+import atexit
 
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python/37340245
+
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -265,8 +269,8 @@ def free_string(stringVar):
 def freeVar():
     # get a malloc function. May be we have not its prototype in pdb file,
     # so we need to define prototype manually
-    #Void = pykd.typeInfo("Void")
-    #PVoid = pykd.typeInfo("Void*")
+    # Void = pykd.typeInfo("Void")
+    # PVoid = pykd.typeInfo("Void*")
     freeProto = pykd.defineFunction(
         pykd.baseTypes.VoidPtr, pykd.callingConvention.NearC)
     freeProto.append("ptr", pykd.baseTypes.VoidPtr)
@@ -370,22 +374,49 @@ class BreakPointType(Enum):
     OneShot = 1
 
 
+class FunctionData:
+    def __init__(self) -> None:
+        self.offset = 0            # 偏移量
+        self.funtionName = ''      # 函数名
+        self.fileName = ''         # 文件名
+        self.startLineNumber = 0   # 函数开始行
+        self.endLineNumber = 0     # 函数结束行
+
+
+class BreakPointHit:
+    def __init__(self) -> None:
+        self.offset = 0            # 偏移量
+        self.funtionName = ''      # 函数名
+        self.isStart = True        # 是否函数入口地址
+        self.appendix = ''         # 附件信息
+
+
 class BreakPointManager(object):
-    def __init__(self, pid, logfilepath):
+    def __init__(self, pid, logfilepath) -> None:
         super(BreakPointManager, self).__init__()
+        # https://blog.csdn.net/nankai0912678/article/details/105269848
+        atexit.register(self.cleanup)
         self.breakpoints = []
-        self.logfile = open(logfilepath, 'w', encoding='utf-8')
         self.inspect = Inspect(pid)
-        self.lineInfos = []
+        self.functions = {}
+        self.breakpointHits = []
+        self.logfilepath = logfilepath
 
-    def __del__(self):
-        print(f'{self.logfile.name} is saved.')
-        self.logfile.close()
+    def cleanup(self):
+        o = {"hits": self.breakpointHits, "functions": self.functions}
+        with open(self.logfilepath, 'w', encoding='utf-8') as json_file:
+            json.dump(o, json_file, indent=4)
 
-    def writeLog(self, log: str):
+    def writeLog(self, hit: BreakPointHit):
+        local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        dir = '>>' if hit.isStart else '<<'
+        log = "{} [{:05x}] {}{}{}\n".format(local_str_time,
+                                            pykd.getThreadSystemID(),
+                                            dir,
+                                            hit.funtionName,
+                                            hit.appendix)
         sys.stdout.write(log)
-        self.logfile.write(log)
-        self.logfile.flush()
+        self.breakpointHits.append(hit.__dict__)
 
     def addBreakPoint(self,
                       moduName,
@@ -404,60 +435,64 @@ class BreakPointManager(object):
             self.breakpoints.remove(bp)
 
     def __addBreakPoint(self, offset, callback, bptype):
+
         class EndBreakpoint(pykd.breakpoint):
-            def __init__(self, offset, symbol, bptype, start):
+            def __init__(self, offset, bptype, start):
                 super(EndBreakpoint, self).__init__(offset)
-                self.symbol = symbol
                 self.type = bptype
                 # http://blog.soliloquize.org/2016/01/21/Python弱引用的使用与注意事项
                 self.start = weakref.proxy(start)
 
             def onHit(self):
-                local_str_time = datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-                log = "{} [{:05x}] <<{}\n".format(local_str_time,
-                                                  pykd.getThreadSystemID(),
-                                                  self.symbol)
-                self.start.manager.writeLog(log)
+                hit = BreakPointHit()
+                hit.offset = self.start.offset
+                hit.funtionName = self.start.symbol
+                hit.isStart = False
+                self.start.manager.writeLog(hit)
 
                 if self.type == BreakPointType.OneShot:
                     self.start.remove()
                 return False
 
         class StartBreakpoint(pykd.breakpoint):
-            def __init__(self, offset, callback, bptype, manager:BreakPointManager):
+            def __init__(self, offset, callback, bptype, manager: BreakPointManager):
                 super(StartBreakpoint, self).__init__(offset)
                 self.symbol = pykd.findSymbol(offset)
                 # For debug
                 # print(self.symbol)
+                self.offset = offset
                 self.callback = callback
                 self.type = bptype
                 retOffset = get_return_addrss(offset)
-                self.endBreakPoint = EndBreakpoint(retOffset, self.symbol,
-                                                   self.type, self)
+                self.endBreakPoint = EndBreakpoint(retOffset, self.type, self)
                 self.manager = weakref.proxy(manager)
                 lineInfo = self.manager.inspect.GetLineFromAddr64(offset)
                 endLineInfo = self.manager.inspect.GetLineFromAddr64(retOffset)
-                self.manager.lineInfos.append((self.symbol, lineInfo, endLineInfo))
+
+                bpData = FunctionData()
+                bpData.offset = offset
+                bpData.funtionName = self.symbol
+                bpData.fileName = lineInfo.FileName
+                bpData.startLineNumber = lineInfo.LineNumber
+                bpData.endLineNumber = endLineInfo.LineNumber
+                self.manager.functions[offset] = bpData.__dict__
 
             def remove(self):
                 self.manager.removeBreakPoint(self)
 
             def onHit(self):
-                local_str_time = datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-                strout = ""
+                appendix = ''
                 if self.callback:
                     ret = self.callback(self)
                     if ret:
-                        strout = " {}".format(ret)
+                        appendix = f" {ret}"
 
-                log = "{} [{:05x}] >>{}{}\n".format(
-                    local_str_time, pykd.getThreadSystemID(), self.symbol,
-                    strout)
-                self.manager.writeLog(log)
+                hit = BreakPointHit()
+                hit.offset = self.offset
+                hit.funtionName = self.symbol
+                hit.isStart = True
+                hit.appendix = appendix
+                self.manager.writeLog(hit)
                 return False
 
         try:
@@ -618,8 +653,9 @@ class Debugger(Thread):
                 self.addBreakPointsInModule(mod_name)
             spinner.stop()
             print(f"\nbreakpoints count: {len(self.manager.breakpoints)}")
-            for index, item in enumerate(self.manager.lineInfos):
-                print(f"{index}: {item[0]} {item[1].FileName}:{item[1].LineNumber}-{item[2].LineNumber}")
+            # for index, item in enumerate(self.manager.lineInfos):
+            #     print(
+            #         f"{index}: {item[0]} {item[1].FileName}:{item[1].LineNumber}-{item[2].LineNumber}")
             print("\nStart monitoring")
 
             if self.prelude:

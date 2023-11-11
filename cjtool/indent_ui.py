@@ -68,8 +68,8 @@ class StandardItem(QStandardItem):
 
 
 class FunctionView(QTreeView):
-    def __init__(self, parent: QWidget) -> None:
-        super().__init__(parent)
+    def __init__(self) -> None:
+        super().__init__()
         self.setHeaderHidden(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._rightClickMenu)
@@ -168,15 +168,17 @@ class MainWindow(QMainWindow):
 
         self._createMenuBar()
 
-        mainWnd = QWidget(self)
+        # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
+        # and set it as the central widget on the QMainWindow and assign the QLayout to that.
+        mainWnd = QWidget()
         self.setCentralWidget(mainWnd)
-        layout = QHBoxLayout(self)
+        layout = QHBoxLayout()
         mainWnd.setLayout(layout)
 
         splitter = QSplitter(Qt.Horizontal)
 
         # Left is QTreeView
-        treeView = FunctionView(self)
+        treeView = FunctionView()
         treeModel = QStandardItemModel()
         rootNode = treeModel.invisibleRootItem()
         self._fillContent(rootNode)
@@ -184,7 +186,7 @@ class MainWindow(QMainWindow):
         treeView.expandAll()
 
         # Right is QTextEdit
-        txt  = QTextEdit(self)
+        txt  = QTextEdit()
 
         splitter.addWidget(treeView)
         splitter.addWidget(txt)
