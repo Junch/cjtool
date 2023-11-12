@@ -1,42 +1,12 @@
 import re
 import sys
 from pathlib import Path
-from common import print_warning
+from common import print_warning, BreakPointHit, BreakPointPairError
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, QMessageBox, QHBoxLayout, QTextEdit, QSplitter
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import *
-
-
-class PairError(Exception):
-
-    def __init__(self, lineNum: int, line: str):
-        self.lineNum = lineNum
-        self.line = line
-
-
-class Item(object):
-
-    def __init__(self, enterFlag: bool, moduleName: str, funcName: str):
-        self.enterFlag = enterFlag
-        self.moduleName = moduleName
-        self.funcName = funcName
-
-    def pairWith(self, item) -> bool:
-        return self.moduleName == item.moduleName and \
-            self.funcName == item.funcName and \
-            self.enterFlag != item.enterFlag
-
-
-def parse(line: str) -> Item:
-    pattern = r'^.{23} \[\w.+\] (>>|<<)(\w*)!(\S+)'
-    m = re.match(pattern, line)
-    if m:
-        enterFlag = m.group(1) == ">>"
-        moduleName = m.group(2)
-        funcName = m.group(3)
-        item = Item(enterFlag, moduleName, funcName)
-        return item
+import json
 
 
 def adjust_file_path(filename: str) -> str:
@@ -186,14 +156,13 @@ class MainWindow(QMainWindow):
         treeView.expandAll()
 
         # Right is QTextEdit
-        txt  = QTextEdit()
+        txt = QTextEdit()
 
         splitter.addWidget(treeView)
         splitter.addWidget(txt)
         splitter.setStretchFactor(0, 4)
         splitter.setStretchFactor(1, 6)
         layout.addWidget(splitter)
-  
 
     def _fillContent(self, rootNode):
         filepath = ''
@@ -203,7 +172,7 @@ class MainWindow(QMainWindow):
         if filepath:
             self._parse_file(rootNode, filepath)
         else:
-            self._parse_file(rootNode, "E:/github/breakpoints/board.log")
+            self._parse_file(rootNode, "E:/github/breakpoints/board.json")
 
     def _createMenuBar(self):
         menuBar = self.menuBar()
@@ -215,17 +184,19 @@ class MainWindow(QMainWindow):
         nDepth = 0
         curRootNode = rootNode
         with open(filefullpath, 'r', encoding='utf-8') as f:
-            for num, line in enumerate(f, 1):
-                curItem = parse(line.rstrip())
-                if not curItem:
-                    continue
+            data = json.loads(f.read())
+            hits = data['hits']
+
+            for num, hit in enumerate(hits, 1):
+                curItem = BreakPointHit()
+                curItem.assign(hit)
 
                 paired = False
                 if stack:
                     topItem = stack[-1][0]
                     if curItem.pairWith(topItem):
-                        if curItem.enterFlag:
-                            raise PairError(num, line)
+                        if curItem.isStart:
+                            raise BreakPointPairError(num, curItem)
                         paired = True
 
                 if paired:
@@ -233,11 +204,11 @@ class MainWindow(QMainWindow):
                     stack.pop()
                     nDepth = nDepth - 1
                 else:
-                    if not curItem.enterFlag:
-                        raise PairError(num, line)
+                    if not curItem.isStart:
+                        raise BreakPointPairError(num, hit)
                     stack.append((curItem, curRootNode))
                     nDepth = nDepth + 1
-                    node = StandardItem(curItem.funcName)
+                    node = StandardItem(curItem.funtionName)
                     curRootNode.appendRow(node)
                     curRootNode = node
 

@@ -2,13 +2,7 @@ import re
 import argparse
 from pathlib import Path
 import json
-from common import print_warning, BreakPointHit
-
-
-class PairError(Exception):
-    def __init__(self, lineNum: int, hit: BreakPointHit):
-        self.lineNum = lineNum
-        self.hit = hit
+from common import print_warning, BreakPointHit, BreakPointPairError
 
 
 def parse_file(filefullpath: str):
@@ -27,7 +21,7 @@ def parse_file(filefullpath: str):
                 topItem = stack[-1]
                 if curItem.pairWith(topItem):
                     if curItem.isStart:
-                        raise PairError(num, curItem)
+                        raise BreakPointPairError(num, curItem)
                     paired = True
 
             if paired:
@@ -35,7 +29,7 @@ def parse_file(filefullpath: str):
                 nDepth = nDepth - 1
             else:
                 if not curItem.isStart:
-                    raise PairError(num, curItem)
+                    raise BreakPointPairError(num, curItem)
                 stack.append(curItem)
                 nDepth = nDepth + 1
                 print('    ' * nDepth + curItem.funtionName)
@@ -66,7 +60,7 @@ def main():
 
     try:
         parse_file(filepath)
-    except PairError as e:
+    except BreakPointPairError as e:
         print_warning(f'The {e.lineNum}th element is not paired')
         print_warning(f'    {e.hit}')
 

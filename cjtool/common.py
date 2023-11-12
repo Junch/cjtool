@@ -403,6 +403,12 @@ class BreakPointHit:
             self.isStart != hit.isStart
 
 
+class BreakPointPairError(Exception):
+    def __init__(self, lineNum: int, hit: BreakPointHit):
+        self.lineNum = lineNum
+        self.hit = hit
+
+
 class BreakPointManager(object):
     def __init__(self, pid, logfilepath) -> None:
         super(BreakPointManager, self).__init__()
@@ -432,6 +438,7 @@ class BreakPointManager(object):
         o = {'hits': self.breakpointHits, 'functions': functionHits}
         with open(self.logfilepath, 'w', encoding='utf-8') as json_file:
             json.dump(o, json_file, indent=4)
+        print(f'{self.logfilepath} is saved.')
 
     def writeLog(self, hit: BreakPointHit):
         local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
