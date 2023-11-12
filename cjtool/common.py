@@ -376,7 +376,6 @@ class BreakPointType(Enum):
 
 class FunctionData:
     def __init__(self) -> None:
-        self.offset = 0            # 偏移量
         self.funtionName = ''      # 函数名
         self.fileName = ''         # 文件名
         self.startLineNumber = 0   # 函数开始行
@@ -385,10 +384,23 @@ class FunctionData:
 
 class BreakPointHit:
     def __init__(self) -> None:
-        self.offset = 0            # 偏移量
+        self.offset = 0            # 函数入口偏移量
+        self.retOffset = 0         # 函数出口偏移量
         self.funtionName = ''      # 函数名
-        self.isStart = True        # 是否函数入口地址
+        self.isStart = True        # 函数入口或出口
         self.appendix = ''         # 附件信息
+        self.threadId = 0          # 线程Id
+
+    def __repr__(self):
+        return f"<common.BreakPointHit offset:{self.offset}, functionName:{self.functionName}, isStart:{self.isStart}>"
+
+    def assign(self, o: dict) -> None:
+        self.__dict__ = o
+
+    def pairWith(self, hit) -> bool:
+        return self.offset == hit.offset and \
+            self.threadId == hit.threadId and \
+            self.isStart != hit.isStart
 
 
 class BreakPointManager(object):
@@ -397,13 +409,27 @@ class BreakPointManager(object):
         # https://blog.csdn.net/nankai0912678/article/details/105269848
         atexit.register(self.cleanup)
         self.breakpoints = []
-        self.inspect = Inspect(pid)
-        self.functions = {}
+        self.pid = pid
         self.breakpointHits = []
         self.logfilepath = logfilepath
 
     def cleanup(self):
-        o = {"hits": self.breakpointHits, "functions": self.functions}
+        functionHits = {}
+        inspect = Inspect(self.pid)
+        for hit in self.breakpointHits:
+            offset = hit['offset']
+            if offset not in functionHits:
+                lineInfo = inspect.GetLineFromAddr64(offset)
+                endLineInfo = inspect.GetLineFromAddr64(hit['retOffset'])
+
+                data = FunctionData()
+                data.funtionName = hit['funtionName']
+                data.fileName = lineInfo.FileName
+                data.startLineNumber = lineInfo.LineNumber
+                data.endLineNumber = endLineInfo.LineNumber
+                functionHits[offset] = data.__dict__
+
+        o = {'hits': self.breakpointHits, 'functions': functionHits}
         with open(self.logfilepath, 'w', encoding='utf-8') as json_file:
             json.dump(o, json_file, indent=4)
 
@@ -411,7 +437,7 @@ class BreakPointManager(object):
         local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         dir = '>>' if hit.isStart else '<<'
         log = "{} [{:05x}] {}{}{}\n".format(local_str_time,
-                                            pykd.getThreadSystemID(),
+                                            hit.threadId,
                                             dir,
                                             hit.funtionName,
                                             hit.appendix)
@@ -446,8 +472,10 @@ class BreakPointManager(object):
             def onHit(self):
                 hit = BreakPointHit()
                 hit.offset = self.start.offset
+                hit.retOffset = self.start.retOffset
                 hit.funtionName = self.start.symbol
                 hit.isStart = False
+                hit.threadId = pykd.getThreadSystemID()
                 self.start.manager.writeLog(hit)
 
                 if self.type == BreakPointType.OneShot:
@@ -463,19 +491,10 @@ class BreakPointManager(object):
                 self.offset = offset
                 self.callback = callback
                 self.type = bptype
-                retOffset = get_return_addrss(offset)
-                self.endBreakPoint = EndBreakpoint(retOffset, self.type, self)
+                self.retOffset = get_return_addrss(offset)
+                self.endBreakPoint = EndBreakpoint(
+                    self.retOffset, self.type, self)
                 self.manager = weakref.proxy(manager)
-                lineInfo = self.manager.inspect.GetLineFromAddr64(offset)
-                endLineInfo = self.manager.inspect.GetLineFromAddr64(retOffset)
-
-                bpData = FunctionData()
-                bpData.offset = offset
-                bpData.funtionName = self.symbol
-                bpData.fileName = lineInfo.FileName
-                bpData.startLineNumber = lineInfo.LineNumber
-                bpData.endLineNumber = endLineInfo.LineNumber
-                self.manager.functions[offset] = bpData.__dict__
 
             def remove(self):
                 self.manager.removeBreakPoint(self)
@@ -489,9 +508,11 @@ class BreakPointManager(object):
 
                 hit = BreakPointHit()
                 hit.offset = self.offset
+                hit.retOffset = self.retOffset
                 hit.funtionName = self.symbol
                 hit.isStart = True
                 hit.appendix = appendix
+                hit.threadId = pykd.getThreadSystemID()
                 self.manager.writeLog(hit)
                 return False
 
@@ -619,7 +640,7 @@ class Debugger(Thread):
         for record in self.breakpoints:
             if record.added:
                 continue
-            pattern = "{}$".format(record.moduName)
+            pattern = f"{record.moduName}$"
             matchObj = re.match(pattern, mod_name, re.I)
             if matchObj:
                 self.manager.addBreakPoint(mod_name, record.funcName,
@@ -632,13 +653,13 @@ class Debugger(Thread):
             pykd.initialize()
             spinner = Spinner()
             if self.pid != 0:
-                msg = "Attaching to process: pid {} ".format(self.pid)
+                msg = f"Attaching to process: pid {self.pid} "
                 sys.stdout.write(msg)
                 spinner.start()
                 pykd.attachProcess(self.pid)
                 # End spinning cursor
             elif self.path is not None:
-                sys.stdout.write("Starting process: {} ".format(self.path))
+                sys.stdout.write(f"Starting process: {self.path} ")
                 spinner.start()
                 pykd.startProcess(self.path)
             else:
@@ -653,9 +674,8 @@ class Debugger(Thread):
                 self.addBreakPointsInModule(mod_name)
             spinner.stop()
             print(f"\nbreakpoints count: {len(self.manager.breakpoints)}")
-            # for index, item in enumerate(self.manager.lineInfos):
-            #     print(
-            #         f"{index}: {item[0]} {item[1].FileName}:{item[1].LineNumber}-{item[2].LineNumber}")
+            for index, item in enumerate(self.manager.breakpoints):
+                print(f"{index}: {item.symbol}")
             print("\nStart monitoring")
 
             if self.prelude:
