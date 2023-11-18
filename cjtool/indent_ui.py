@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import *
 import json
+import linecache
+from PyQt5.QtGui import QFont, QFontMetrics
 
 
 def keystoint(x):
@@ -47,12 +49,30 @@ class StandardItem(QStandardItem):
 class SourceEdit(QTextEdit):
     def __init__(self) -> None:
         super().__init__()
+        font = QFont('Courier', 10)
+        font.setStyleHint(QFont.Monospace)
+        font.setFixedPitch(True)
+        self.setFont(font)
+        self.setLineWrapMode(QTextEdit.NoWrap)
+        width = QFontMetrics(font).averageCharWidth()
+        self.setTabStopDistance(4 * width)
 
-    def selectionChanged(self, selected, deselected):
+    def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
         selectedIndex = selected.indexes()[0]
         item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
-        self.setText(str(item.functionData))
+        if not item.functionData:
+            return
+
+        filefullpath = item.functionData.fileName
+        line_numbers = range(item.functionData.startLineNumber - 2,
+                             item.functionData.endLineNumber + 1)
+        lines = []
+        for i in line_numbers:
+            line = linecache.getline(filefullpath, i)
+            lines.append(line)
+
+        self.setText(''.join(lines))
 
 
 class FunctionView(QTreeView):
@@ -238,6 +258,7 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     demo = MainWindow()
     demo.show()
