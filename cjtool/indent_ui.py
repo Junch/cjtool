@@ -64,9 +64,16 @@ class SourceEdit(QTextEdit):
         if not item.functionData:
             return
 
+        # 确定函数名所在的行
+        functionName = item.functionData.funtionName.split('!')[1]  # 去掉!前的模块名称
         filefullpath = item.functionData.fileName
-        line_numbers = range(item.functionData.startLineNumber - 2,
-                             item.functionData.endLineNumber + 1)
+        for i in range(item.functionData.startLineNumber, 0, -1):
+            line = linecache.getline(filefullpath, i)
+            if functionName in line:
+                break
+
+        line_numbers = range(i, item.functionData.endLineNumber + 1)
+
         lines = []
         for i in line_numbers:
             line = linecache.getline(filefullpath, i)
