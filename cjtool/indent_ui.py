@@ -1,12 +1,17 @@
 import re
 import sys
 from pathlib import Path
-from common import print_warning, BreakPointHit, BreakPointPairError
+from common import print_warning, BreakPointHit, BreakPointPairError, FunctionData
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, QMessageBox, QHBoxLayout, QTextEdit, QSplitter
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QMenu, QWidget, \
+    QHBoxLayout, QTextEdit, QSplitter, QAbstractItemView
 from PyQt5.Qt import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import *
 import json
+
+
+def keystoint(x):
+    return {int(k): v for k, v in x.items()}
 
 
 def adjust_file_path(filename: str) -> str:
@@ -26,6 +31,8 @@ class StandardItem(QStandardItem):
         self.setEditable(False)
         self.setText(txt)
         self.count = 1
+        self.offset = 0
+        self.functionData: FunctionData = None
 
     def increaseCount(self):
         self.count += 1
@@ -37,15 +44,27 @@ class StandardItem(QStandardItem):
         return arr[0].rstrip()
 
 
+class SourceEdit(QTextEdit):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def selectionChanged(self, selected, deselected):
+        " Slot is called when the selection has been changed "
+        selectedIndex = selected.indexes()[0]
+        item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
+        self.setText(str(item.functionData))
+
+
 class FunctionView(QTreeView):
     def __init__(self) -> None:
         super().__init__()
         self.setHeaderHidden(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._rightClickMenu)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.bStyleSheetNone = False
 
-    def _rightClickMenu(self, pos):
+    def _rightClickMenu(self, pos) -> None:
         try:
             self.contextMenu = QMenu()
 
@@ -75,13 +94,13 @@ class FunctionView(QTreeView):
         except Exception as e:
             print(e)
 
-    def _copy(self):
+    def _copy(self) -> None:
         index = self.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
         clipboard = QApplication.clipboard()
         clipboard.setText(item.text())
 
-    def _styleSheetChange(self):
+    def _styleSheetChange(self) -> None:
         if self.bStyleSheetNone:
             self.setStyleSheet(
                 "QTreeView::branch: {border-image: url(:/vline.png);}")
@@ -127,8 +146,6 @@ class FunctionView(QTreeView):
                     preChild = child
                     queue.append(child)
 
-        # QMessageBox.about(self, '提示', f'节点数 {nCount}')
-
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
@@ -156,7 +173,7 @@ class MainWindow(QMainWindow):
         treeView.expandAll()
 
         # Right is QTextEdit
-        txt = QTextEdit()
+        txt = SourceEdit()
 
         splitter.addWidget(treeView)
         splitter.addWidget(txt)
@@ -164,7 +181,9 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 6)
         layout.addWidget(splitter)
 
-    def _fillContent(self, rootNode):
+        treeView.selectionModel().selectionChanged.connect(txt.selectionChanged)
+
+    def _fillContent(self, rootNode) -> None:
         filepath = ''
         if (len(sys.argv) == 2):
             filepath = adjust_file_path(sys.argv[1])
@@ -174,18 +193,19 @@ class MainWindow(QMainWindow):
         else:
             self._parse_file(rootNode, "E:/github/breakpoints/board.json")
 
-    def _createMenuBar(self):
+    def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
         fileMenu = QMenu("&File", self)
         menuBar.addMenu(fileMenu)
 
-    def _parse_file(self, rootNode, filefullpath: str):
+    def _parse_file(self, rootNode, filefullpath: str) -> None:
         stack = []
         nDepth = 0
         curRootNode = rootNode
         with open(filefullpath, 'r', encoding='utf-8') as f:
             data = json.loads(f.read())
             hits = data['hits']
+            functions = keystoint(data['functions'])
 
             for num, hit in enumerate(hits, 1):
                 curItem = BreakPointHit()
@@ -209,6 +229,10 @@ class MainWindow(QMainWindow):
                     stack.append((curItem, curRootNode))
                     nDepth = nDepth + 1
                     node = StandardItem(curItem.funtionName)
+                    node.offset = curItem.offset
+                    data = FunctionData()
+                    data.assign(functions[node.offset])
+                    node.functionData = data
                     curRootNode.appendRow(node)
                     curRootNode = node
 

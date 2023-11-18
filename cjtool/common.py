@@ -381,6 +381,12 @@ class FunctionData:
         self.startLineNumber = 0   # 函数开始行
         self.endLineNumber = 0     # 函数结束行
 
+    def assign(self, o: dict) -> None:
+        self.__dict__ = o
+
+    def __repr__(self):
+        return f"<FunctionData: {self.funtionName}: {self.fileName} ({self.startLineNumber} - {self.endLineNumber})>"
+
 
 class BreakPointHit:
     def __init__(self) -> None:
