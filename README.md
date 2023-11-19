@@ -55,3 +55,9 @@ optional arguments:
 python setup.py bdist_wheel --universal
 twine upload dist/*
 ```
+
+## Test on local machine
+
+```bash
+python setup.py install
+```
