@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QFont, QFontMetrics, QColor, QSyntaxHighlighter, QTextCharFormat
-from PyQt5.QtWidgets import QTextEdit, QPlainTextEdit
+from PyQt5.QtWidgets import QPlainTextEdit
 from gui.CallStackView import StandardItem
 import linecache
 from pygments import highlight
@@ -95,7 +95,7 @@ class SourceEdit(QPlainTextEdit):
         self.setTabStopDistance(4 * width)
 
         # 设置pygments的内建style
-        style_name = 'github-dark'  # 'solarized-dark'
+        style_name = 'nord-darker' # github-dark', 'solarized-dark'
         self.formatter = CodeFormatter(style=style_name, font=font)
         style = get_style_by_name(style_name)
         bgcolor = style.background_color

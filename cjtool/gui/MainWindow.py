@@ -2,7 +2,7 @@ from common import BreakPointHit, BreakPointPairError, FunctionData
 from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHBoxLayout, QMainWindow, QMenu, QSplitter, QWidget
+from PyQt5.QtWidgets import QHBoxLayout, QMainWindow, QSplitter, QWidget, QStatusBar
 from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
 import json
@@ -50,15 +50,16 @@ class MainWindow(QMainWindow):
         treeView.expandAll()
 
         # Right is QTextEdit
-        txt = SourceEdit()
+        sourceEdit = SourceEdit()
 
         splitter.addWidget(treeView)
-        splitter.addWidget(txt)
+        splitter.addWidget(sourceEdit)
         splitter.setStretchFactor(0, 4)
         splitter.setStretchFactor(1, 6)
         layout.addWidget(splitter)
 
-        treeView.selectionModel().selectionChanged.connect(txt.selectionChanged)
+        treeView.selectionModel().selectionChanged.connect(sourceEdit.selectionChanged)
+        treeView.selectionModel().selectionChanged.connect(self.selectionChanged)
 
     def _fillContent(self, rootNode) -> None:
         filepath = ''
@@ -72,8 +73,13 @@ class MainWindow(QMainWindow):
 
     def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
-        fileMenu = QMenu("&File", self)
-        menuBar.addMenu(fileMenu)
+        menuBar.setStyleSheet('font-size: 9px;')
+        fileMenu = menuBar.addMenu("&File")
+        helpMenu = menuBar.addMenu("&Help")
+        statusBar = QStatusBar()
+        statusBar.setStyleSheet('font-size: 9px;')
+        self.setStatusBar(statusBar)
+        statusBar.showMessage("...")
 
     def _parse_file(self, rootNode, filefullpath: str) -> None:
         stack = []
@@ -112,3 +118,14 @@ class MainWindow(QMainWindow):
                     node.functionData = data
                     curRootNode.appendRow(node)
                     curRootNode = node
+
+    def selectionChanged(self, selected, deselected) -> None:
+        selectedIndex = selected.indexes()[0]
+        item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
+        if not item.functionData:
+            return
+
+        # 确定函数名所在的行
+        filefullpath = item.functionData.fileName
+        self.statusBar().showMessage(
+            f"{filefullpath}({item.functionData.startLineNumber})")

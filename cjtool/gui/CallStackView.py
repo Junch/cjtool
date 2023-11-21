@@ -34,29 +34,28 @@ class CallStackView(QTreeView):
 
     def _rightClickMenu(self, pos) -> None:
         try:
-            self.contextMenu = QMenu()
+            self.contextMenu = QMenu(self)
+            self.contextMenu.setStyleSheet("font-size: 9px;")
 
             indexes = self.selectedIndexes()
             if len(indexes) > 0:
-                self.actionCopy = self.contextMenu.addAction('复制')
-                self.actionCopy.triggered.connect(self._copy)
+                self.contextMenu.addAction('复制').triggered.connect(self._copy)
+                self.contextMenu.addAction(
+                    '复制路径').triggered.connect(self._copyPath)
                 self.contextMenu.addSeparator()
 
-            self.actionStyleSheet = self.contextMenu.addAction('样式切换')
-            self.actionStyleSheet.triggered.connect(self._styleSheetChange)
-
-            self.actionExpand = self.contextMenu.addAction('全部展开')
-            self.actionExpand.triggered.connect(self.expandAll)
+            self.contextMenu.addAction(
+                '样式切换').triggered.connect(self._styleSheetChange)
+            self.contextMenu.addAction(
+                '全部展开').triggered.connect(self.expandAll)
 
             arr = ['一级展开', '二级展开', '三级展开', '四级展开']
-            self.actionExpandAction = [None]*4
             def foo(i): return lambda: self._expandLevel(i+1)
             for i, mi in enumerate(arr):
-                self.actionExpandAction[i] = self.contextMenu.addAction(mi)
-                self.actionExpandAction[i].triggered.connect(foo(i))
+                self.contextMenu.addAction(mi).triggered.connect(foo(i))
 
-            self.actionLoopMatch = self.contextMenu.addAction('循环识别')
-            self.actionLoopMatch.triggered.connect(self._loopMatch)
+            self.contextMenu.addAction(
+                '循环识别').triggered.connect(self._loopMatch)
 
             self.contextMenu.exec_(self.mapToGlobal(pos))
         except Exception as e:
@@ -67,6 +66,15 @@ class CallStackView(QTreeView):
         item = index.model().itemFromIndex(index)
         clipboard = QApplication.clipboard()
         clipboard.setText(item.text())
+
+    def _copyPath(self) -> None:
+        index = self.selectedIndexes()[0]
+        item: StandardItem = index.model().itemFromIndex(index)
+        if not item.functionData:
+            return
+
+        clipboard = QApplication.clipboard()
+        clipboard.setText(item.functionData.fileName)
 
     def _styleSheetChange(self) -> None:
         if self.bStyleSheetNone:

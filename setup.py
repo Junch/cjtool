@@ -6,7 +6,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='cjtool',
-      version='0.28.2',
+      version='0.28.3',
       description='Provide some tools in C++ development',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -14,7 +14,8 @@ setup(name='cjtool',
       author='Jun Chen',
       author_email='junc76@gmail.com',
       license='MIT',
-      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd', 'PyYAML', 'sourceline', 'PyQt5', 'pygments'],
+      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd', 'PyYAML', \
+                        'sourceline', 'PyQt5', 'pygments', 'qdarkstyle'],
       packages=find_packages(exclude=['test']),
       entry_points={
           'console_scripts':
