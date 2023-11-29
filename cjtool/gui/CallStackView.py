@@ -32,10 +32,16 @@ class CallStackView(QTreeView):
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.bStyleSheetNone = False
 
+    def clear(self):
+        self.model().beginResetModel()
+        rowCount = self.model().rowCount()
+        for i in range(rowCount):
+            self.model().removeRow(0)
+        self.model().endResetModel()
+
     def _rightClickMenu(self, pos) -> None:
         try:
             self.contextMenu = QMenu(self)
-            self.contextMenu.setStyleSheet("font-size: 9px;")
 
             indexes = self.selectedIndexes()
             if len(indexes) > 0:

@@ -2,7 +2,7 @@ from common import BreakPointHit, BreakPointPairError, FunctionData
 from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHBoxLayout, QMainWindow, QSplitter, QWidget, QStatusBar
+from PyQt5.QtWidgets import QHBoxLayout, QMainWindow, QSplitter, QWidget, QStatusBar, QFileDialog, QAction, QMessageBox
 from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
 import json
@@ -44,10 +44,7 @@ class MainWindow(QMainWindow):
         # Left is QTreeView
         treeView = CallStackView()
         treeModel = QStandardItemModel()
-        rootNode = treeModel.invisibleRootItem()
-        self._fillContent(rootNode)
         treeView.setModel(treeModel)
-        treeView.expandAll()
 
         # Right is QTextEdit
         sourceEdit = SourceEdit()
@@ -60,6 +57,7 @@ class MainWindow(QMainWindow):
 
         treeView.selectionModel().selectionChanged.connect(sourceEdit.selectionChanged)
         treeView.selectionModel().selectionChanged.connect(self.selectionChanged)
+        self.treeView = treeView
 
     def _fillContent(self, rootNode) -> None:
         filepath = ''
@@ -68,18 +66,31 @@ class MainWindow(QMainWindow):
 
         if filepath:
             self._parse_file(rootNode, filepath)
-        else:
-            self._parse_file(rootNode, "E:/github/breakpoints/board.json")
 
     def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
-        menuBar.setStyleSheet('font-size: 9px;')
         fileMenu = menuBar.addMenu("&File")
+        importAct = QAction('&Import', self)
+        importAct.triggered.connect(self._import_file)
+        fileMenu.addAction(importAct)
+
         helpMenu = menuBar.addMenu("&Help")
         statusBar = QStatusBar()
-        statusBar.setStyleSheet('font-size: 9px;')
         self.setStatusBar(statusBar)
         statusBar.showMessage("...")
+
+    def _import_file(self) -> None:
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setNameFilter("Json file (*.json)")
+        dialog.setViewMode(QFileDialog.ViewMode.List)
+        if dialog.exec():
+            filenames = dialog.selectedFiles()
+            if filenames:
+                self.treeView.clear()
+                rootNode = self.treeView.model().invisibleRootItem()
+                self._parse_file(rootNode, filenames[0])
+                self.treeView.expandAll()
 
     def _parse_file(self, rootNode, filefullpath: str) -> None:
         stack = []
@@ -120,6 +131,9 @@ class MainWindow(QMainWindow):
                     curRootNode = node
 
     def selectionChanged(self, selected, deselected) -> None:
+        if not selected.indexes():
+            return
+
         selectedIndex = selected.indexes()[0]
         item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
         if not item.functionData:

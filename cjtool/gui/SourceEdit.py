@@ -86,7 +86,7 @@ class CodeHighlighter(QSyntaxHighlighter):
 class SourceEdit(QPlainTextEdit):
     def __init__(self) -> None:
         super().__init__()
-        font = QFont('Inconsolata', 9)
+        font = QFont('Inconsolata')
         font.setStyleHint(QFont.Monospace)
         font.setFixedPitch(True)
         self.setFont(font)
@@ -95,7 +95,7 @@ class SourceEdit(QPlainTextEdit):
         self.setTabStopDistance(4 * width)
 
         # 设置pygments的内建style
-        style_name = 'nord-darker' # github-dark', 'solarized-dark'
+        style_name = 'nord-darker'  # github-dark', 'solarized-dark'
         self.formatter = CodeFormatter(style=style_name, font=font)
         style = get_style_by_name(style_name)
         bgcolor = style.background_color
@@ -103,6 +103,10 @@ class SourceEdit(QPlainTextEdit):
 
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
+        if not selected.indexes():
+            self.setPlainText('')
+            return
+
         selectedIndex = selected.indexes()[0]
         item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
         if not item.functionData:
@@ -110,10 +114,15 @@ class SourceEdit(QPlainTextEdit):
 
         # 确定函数名所在的行
         functionName = item.functionData.funtionName.split('!')[1]  # 去掉!前的模块名称
+        # 可能带namespace，而namespace很可能不包含在函数名所在的
+        functionName = functionName.split('::')[-1] + '('
+
         filefullpath = item.functionData.fileName
+        nCount = 20
         for i in range(item.functionData.startLineNumber, 0, -1):
             line = linecache.getline(filefullpath, i)
-            if functionName in line:
+            nCount = nCount - 1
+            if functionName in line or nCount == 0:  # 最多往上搜索20行
                 break
 
         line_numbers = range(i, item.functionData.endLineNumber + 1)
