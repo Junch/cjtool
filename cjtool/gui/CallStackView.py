@@ -116,7 +116,11 @@ class CallStackView(QTreeView):
                     preChild = child
                     queue.append(child)
 
-    def _save(self, zf: zipfile.ZipFile) -> None:
+    def _save(self, codeFolder: str) -> None:
+        src_dir = Path(codeFolder).joinpath('code')
+        if not src_dir.exists():
+            Path(src_dir).mkdir()
+
         model = self.model()
         rootNode = model.invisibleRootItem()
         stack = []
@@ -127,21 +131,15 @@ class CallStackView(QTreeView):
             stack.pop()
             if hasattr(elem, 'functionData'):
                 # print('    '*depth + elem.functionData.funtionName)
-                self._save_elem(elem, zf)
+                self._save_elem(elem, codeFolder)
 
             for row in range(elem.rowCount() - 1, -1, -1):
                 child = elem.child(row, 0)
                 stack.append((child, depth + 1))
 
-    def _save_elem(self, elem: StandardItem, zf: zipfile.ZipFile) -> None:
-        src_filename = f"code/{elem.offset}.cpp"
-        if not src_filename in zf.namelist():
-            tfname = ''
-            with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as tf:
-                tfname = tf.name
+    def _save_elem(self, elem: StandardItem, codeFolder: str) -> None:
+        src_filename = Path(codeFolder).joinpath('code', f"{elem.offset}.cpp")
+        if not src_filename.exists():
+            with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
                 content = elem.functionData.content()
-                tf.write(content)
-
-            if tfname:
-                zf.write(tfname, arcname=src_filename)
-                Path(tfname).unlink()
+                f.write(content)

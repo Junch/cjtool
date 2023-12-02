@@ -14,6 +14,9 @@ from json import JSONEncoder
 from sourceline import Inspect
 import atexit
 import linecache
+import zipfile
+from pathlib import Path
+import tempfile
 
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python/37340245
 
@@ -463,9 +466,20 @@ class BreakPointManager(object):
                 functionHits[offset] = data.__dict__
 
         o = {'hits': self.breakpointHits, 'functions': functionHits}
-        with open(self.logfilepath, 'w', encoding='utf-8') as json_file:
+
+        tfname = ''
+        with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as json_file:
+            tfname = json_file.name
             json.dump(o, json_file, indent=4)
-        print(f'{self.logfilepath} is saved.')
+
+        if tfname:
+            zfname = Path(self.logfilepath).with_suffix('.zip')
+            with zipfile.ZipFile(zfname, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.write(tfname, arcname='monitor.json')
+
+            print(f'{zfname} is saved.')
+        else:
+            print_warning('Monitor log file is not saved.')
 
     def writeLog(self, hit: BreakPointHit):
         local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]

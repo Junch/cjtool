@@ -8,7 +8,8 @@ from pathlib import Path
 import json
 import sys
 import zipfile
-import shutil
+import tempfile
+import os
 
 
 def keystoint(x):
@@ -24,6 +25,24 @@ def adjust_file_path(filename: str) -> str:
         return newpath
 
     return None
+
+
+def zipDir(dirpath: str, outFullName: str) -> None:
+    """
+    压缩指定文件夹
+    :param dirpath: 目标文件夹路径
+    :param outFullName: 压缩文件保存路径+xxxx.zip
+    :return: 无
+    """
+    zip = zipfile.ZipFile(outFullName, "w", zipfile.ZIP_DEFLATED)
+    for path, dirnames, filenames in os.walk(dirpath):
+        # 去掉目标跟路径，只对目标文件夹下边的文件及文件夹进行压缩
+        fpath = path.replace(dirpath, '')
+
+        for filename in filenames:
+            zip.write(os.path.join(path, filename),
+                      os.path.join(fpath, filename))
+    zip.close()
 
 
 class MainWindow(QMainWindow):
@@ -59,7 +78,11 @@ class MainWindow(QMainWindow):
 
         treeView.selectionModel().selectionChanged.connect(sourceEdit.selectionChanged)
         treeView.selectionModel().selectionChanged.connect(self.selectionChanged)
-        self.treeView = treeView
+        self.treeView: CallStackView = treeView
+        self.sourceEdit: SourceEdit = sourceEdit
+
+        self.tempdir = None
+        self.filename = ''
 
     def _fillContent(self, rootNode) -> None:
         filepath = ''
@@ -72,9 +95,10 @@ class MainWindow(QMainWindow):
     def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
         fileMenu = menuBar.addMenu("&File")
-        importAct = QAction('&Import', self)
-        importAct.triggered.connect(self._import_file)
-        fileMenu.addAction(importAct)
+
+        openAct = QAction('&Open', self)
+        openAct.triggered.connect(self._open_file)
+        fileMenu.addAction(openAct)
 
         saveAct = QAction('&Save', self)
         saveAct.triggered.connect(self._save_file)
@@ -85,30 +109,31 @@ class MainWindow(QMainWindow):
         self.setStatusBar(statusBar)
         statusBar.showMessage("...")
 
-    def _import_file(self) -> None:
-        dialog = QFileDialog(self)
-        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-        dialog.setNameFilter("Json file (*.json)")
-        dialog.setViewMode(QFileDialog.ViewMode.List)
-        if dialog.exec():
-            filenames = dialog.selectedFiles()
-            if filenames:
-                self.treeView.clear()
-                rootNode = self.treeView.model().invisibleRootItem()
-                self._parse_file(rootNode, filenames[0])
-                self.treeView.expandAll()
-
     def _save_file(self) -> None:
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save zip file", '', "ZIP Files (*.zip)")
+        # 保存代码到零时目录
+        self.treeView._save(self.tempdir.name)
+        zipDir(self.tempdir.name, self.filename)
+
+    def _open_file(self) -> None:
+        if self.tempdir:
+            self.tempdir.cleanup()
+            self.tempdir = None
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self, 'Open zip file', '', 'ZIP Files (*.zip)')
         if filename:
-            with zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED) as zf:
-                zf.write(self.filefullpath, arcname='monitor.json')
-                self.treeView._save(zf)
+            zf = zipfile.ZipFile(filename)
+            self.tempdir = tempfile.TemporaryDirectory()
+            zf.extractall(self.tempdir.name)
+            self.treeView.clear()
+            self.sourceEdit.setCodeFolder(self.tempdir.name)
+            rootNode = self.treeView.model().invisibleRootItem()
+            self._parse_file(rootNode, Path(
+                self.tempdir.name).joinpath('monitor.json'))
+            self.treeView.expandAll()
+            self.filename = filename
 
     def _parse_file(self, rootNode, filefullpath: str) -> None:
-        self.filefullpath = filefullpath
-
         stack = []
         nDepth = 0
         curRootNode = rootNode

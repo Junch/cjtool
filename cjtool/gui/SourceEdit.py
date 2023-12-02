@@ -6,6 +6,7 @@ from pygments import highlight
 from pygments.lexers import *
 from pygments.formatter import Formatter
 from pygments.styles import get_style_by_name
+from pathlib import Path
 
 # https://github.com/agoose77/hive2/blob/235a2f01dfd922f56d850062f2219bd444d24e7e/hive_editor/qt/code_editor.py
 # https://ralsina.me/static/highlighter.py
@@ -101,6 +102,9 @@ class SourceEdit(QPlainTextEdit):
         bgcolor = style.background_color
         self.setStyleSheet(f"background-color: {bgcolor};")
 
+    def setCodeFolder(self, folder: str):
+        self.codeFolder = folder
+
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
         if not selected.indexes():
@@ -112,7 +116,15 @@ class SourceEdit(QPlainTextEdit):
         if not item.functionData:
             return
 
-        self.setPlainText(item.functionData.content())
+        content = ''
+        src_filename = Path(self.codeFolder).joinpath('code', f"{item.offset}.cpp")
+        if src_filename.exists():
+            with open(src_filename.absolute(), 'r', encoding='utf-8') as f:
+                content = f.read()
+        else:
+            content = item.functionData.content()
+
+        self.setPlainText(content)
 
         # Highlighting
         lexer = get_lexer_by_name('cpp')
