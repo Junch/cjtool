@@ -2,6 +2,9 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.Qt import QStandardItem
 from common import FunctionData
+from pathlib import Path
+import zipfile
+import tempfile
 
 
 class StandardItem(QStandardItem):
@@ -56,7 +59,7 @@ class CallStackView(QTreeView):
                 '全部展开').triggered.connect(self.expandAll)
 
             arr = ['一级展开', '二级展开', '三级展开', '四级展开']
-            def foo(i): return lambda: self._expandLevel(i+1)
+            def foo(i): return lambda: self.expandToDepth(i)
             for i, mi in enumerate(arr):
                 self.contextMenu.addAction(mi).triggered.connect(foo(i))
 
@@ -92,21 +95,6 @@ class CallStackView(QTreeView):
 
         self.bStyleSheetNone = not self.bStyleSheetNone
 
-    def _expandLevel(self, nLevel: int):
-        model = self.model()
-        rootNode = model.invisibleRootItem()
-        queue = []
-        queue.append((rootNode, 0))
-        while (queue):
-            elem, level = queue.pop(0)
-            if (level < nLevel):
-                self.setExpanded(elem.index(), True)
-                for row in range(elem.rowCount()):
-                    child = elem.child(row, 0)
-                    queue.append((child, level + 1))
-            elif (level == nLevel):
-                self.setExpanded(elem.index(), False)
-
     def _loopMatch(self):
         model = self.model()
         rootNode = model.invisibleRootItem()
@@ -127,3 +115,33 @@ class CallStackView(QTreeView):
                     row += 1
                     preChild = child
                     queue.append(child)
+
+    def _save(self, zf: zipfile.ZipFile) -> None:
+        model = self.model()
+        rootNode = model.invisibleRootItem()
+        stack = []
+        stack.append((rootNode, 0))
+        while stack:
+            elem = stack[-1][0]
+            depth = stack[-1][1]
+            stack.pop()
+            if hasattr(elem, 'functionData'):
+                # print('    '*depth + elem.functionData.funtionName)
+                self._save_elem(elem, zf)
+
+            for row in range(elem.rowCount() - 1, -1, -1):
+                child = elem.child(row, 0)
+                stack.append((child, depth + 1))
+
+    def _save_elem(self, elem: StandardItem, zf: zipfile.ZipFile) -> None:
+        src_filename = f"code/{elem.offset}.cpp"
+        if not src_filename in zf.namelist():
+            tfname = ''
+            with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as tf:
+                tfname = tf.name
+                content = elem.functionData.content()
+                tf.write(content)
+
+            if tfname:
+                zf.write(tfname, arcname=src_filename)
+                Path(tfname).unlink()

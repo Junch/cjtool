@@ -7,6 +7,8 @@ from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
 import json
 import sys
+import zipfile
+import shutil
 
 
 def keystoint(x):
@@ -74,6 +76,10 @@ class MainWindow(QMainWindow):
         importAct.triggered.connect(self._import_file)
         fileMenu.addAction(importAct)
 
+        saveAct = QAction('&Save', self)
+        saveAct.triggered.connect(self._save_file)
+        fileMenu.addAction(saveAct)
+
         helpMenu = menuBar.addMenu("&Help")
         statusBar = QStatusBar()
         self.setStatusBar(statusBar)
@@ -92,7 +98,17 @@ class MainWindow(QMainWindow):
                 self._parse_file(rootNode, filenames[0])
                 self.treeView.expandAll()
 
+    def _save_file(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save zip file", '', "ZIP Files (*.zip)")
+        if filename:
+            with zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.write(self.filefullpath, arcname='monitor.json')
+                self.treeView._save(zf)
+
     def _parse_file(self, rootNode, filefullpath: str) -> None:
+        self.filefullpath = filefullpath
+
         stack = []
         nDepth = 0
         curRootNode = rootNode
