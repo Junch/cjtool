@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QFont, QFontMetrics, QColor, QSyntaxHighlighter, QTextCharFormat
 from PyQt5.QtWidgets import QPlainTextEdit
 from gui.CallStackView import StandardItem
-import linecache
+from common import FunctionData
 from pygments import highlight
 from pygments.lexers import *
 from pygments.formatter import Formatter
@@ -112,27 +112,7 @@ class SourceEdit(QPlainTextEdit):
         if not item.functionData:
             return
 
-        # 确定函数名所在的行
-        functionName = item.functionData.funtionName.split('!')[1]  # 去掉!前的模块名称
-        # 可能带namespace，而namespace很可能不包含在函数名所在的
-        functionName = functionName.split('::')[-1] + '('
-
-        filefullpath = item.functionData.fileName
-        nCount = 20
-        for i in range(item.functionData.startLineNumber, 0, -1):
-            line = linecache.getline(filefullpath, i)
-            nCount = nCount - 1
-            if functionName in line or nCount == 0:  # 最多往上搜索20行
-                break
-
-        line_numbers = range(i, item.functionData.endLineNumber + 1)
-
-        lines = []
-        for i in line_numbers:
-            line = linecache.getline(filefullpath, i)
-            lines.append(line)
-
-        self.setPlainText(''.join(lines))
+        self.setPlainText(item.functionData.content())
 
         # Highlighting
         lexer = get_lexer_by_name('cpp')

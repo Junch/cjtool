@@ -13,6 +13,7 @@ import json
 from json import JSONEncoder
 from sourceline import Inspect
 import atexit
+import linecache
 
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python/37340245
 
@@ -380,6 +381,26 @@ class FunctionData:
         self.fileName = ''         # 文件名
         self.startLineNumber = 0   # 函数开始行
         self.endLineNumber = 0     # 函数结束行
+
+    def content(self) -> str:
+        # 确定函数名所在的行
+        functionName = self.funtionName.split('!')[1]  # 去掉!前的模块名称
+        # 可能带namespace，而namespace很可能不包含在函数名所在的
+        functionName = functionName.split('::')[-1] + '('
+
+        nCount = 20
+        for i in range(self.startLineNumber, 0, -1):
+            line = linecache.getline(self.fileName, i)
+            nCount = nCount - 1
+            if functionName in line or nCount == 0:  # 最多往上搜索20行
+                break
+
+        lines = []
+        for i in range(i, self.endLineNumber + 1):
+            line = linecache.getline(self.fileName, i)
+            lines.append(line)
+
+        return ''.join(lines)
 
     def assign(self, o: dict) -> None:
         self.__dict__ = o
