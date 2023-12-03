@@ -128,48 +128,73 @@ class MainWindow(QMainWindow):
             self.treeView.clear()
             self.sourceEdit.setCodeFolder(self.tempdir.name)
             rootNode = self.treeView.model().invisibleRootItem()
-            self._parse_file(rootNode, Path(
-                self.tempdir.name).joinpath('monitor.json'))
+            self._parse_file(rootNode)
             self.treeView.expandAll()
             self.filename = filename
 
-    def _parse_file(self, rootNode, filefullpath: str) -> None:
-        stack = []
-        nDepth = 0
-        curRootNode = rootNode
-        with open(filefullpath, 'r', encoding='utf-8') as f:
+    def get_breakpoints(self) -> tuple:
+        monitor_file = Path(self.tempdir.name).joinpath('monitor.json')
+        with open(monitor_file, 'r', encoding='utf-8') as f:
             data = json.loads(f.read())
             hits = data['hits']
             functions = keystoint(data['functions'])
 
-            for num, hit in enumerate(hits, 1):
-                curItem = BreakPointHit()
-                curItem.assign(hit)
+            breakpoints = {}
+            for item in hits:
+                hit = BreakPointHit()
+                hit.assign(item)
+                breakpoints[hit.id] = hit
 
-                paired = False
-                if stack:
-                    topItem = stack[-1][0]
-                    if curItem.pairWith(topItem):
-                        if curItem.isStart:
-                            raise BreakPointPairError(num, curItem)
-                        paired = True
+            functionDict = {}
+            for k, v in functions.items():
+                func = FunctionData()
+                func.assign(v)
+                functionDict[k] = func
+            return breakpoints, functionDict
 
-                if paired:
-                    curRootNode = stack[-1][1]
-                    stack.pop()
-                    nDepth = nDepth - 1
-                else:
-                    if not curItem.isStart:
-                        raise BreakPointPairError(num, hit)
-                    stack.append((curItem, curRootNode))
-                    nDepth = nDepth + 1
-                    node = StandardItem(curItem.funtionName)
-                    node.offset = curItem.offset
-                    data = FunctionData()
-                    data.assign(functions[node.offset])
-                    node.functionData = data
+    def get_depth_id(self, line: str) -> tuple:
+        depth = 0
+        for c in line:
+            if c == '\t':
+                depth = depth + 1
+            else:
+                break
+
+        arr = line.split(' ')
+        id = int(arr[0])
+        fname = arr[1].rstrip()
+        return depth, id, fname
+
+    def _parse_file(self, rootNode: StandardItem) -> None:
+        breakpoints, functions = self.get_breakpoints()
+
+        stack = []
+        curRootNode: StandardItem = rootNode
+
+        treefname = Path(self.tempdir.name).joinpath('tree.txt')
+        with open(treefname, 'r', encoding='utf-8') as f:
+            data = f.readlines()
+            depth = -1
+            for line in data:
+                curDepth, id, fname = self.get_depth_id(line)
+                node = StandardItem(fname)
+                node.id = id
+                node.offset = breakpoints[id].offset
+                node.functionData = functions[node.offset]
+
+                if curDepth > depth:
                     curRootNode.appendRow(node)
-                    curRootNode = node
+                    stack.append((depth, curRootNode))
+                    depth = curDepth
+                elif curDepth == depth:
+                    parent = stack[-1][1]
+                    parent.appendRow(node)
+                else:
+                    while curDepth > depth:
+                        depth, curRootNode = stack[-1]
+                        stack.pop()
+                    curRootNode.appendRow(node)
+                curRootNode = node
 
     def selectionChanged(self, selected, deselected) -> None:
         if not selected.indexes():
