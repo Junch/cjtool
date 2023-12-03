@@ -14,6 +14,7 @@ class StandardItem(QStandardItem):
         self.setText(txt)
         self.count = 1
         self.offset = 0
+        self.id = 0
         self.functionData: FunctionData = None
 
     def increaseCount(self):
@@ -32,7 +33,7 @@ class CallStackView(QTreeView):
         self.setHeaderHidden(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._rightClickMenu)
-        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ContiguousSelection)
         self.bStyleSheetNone = False
 
     def clear(self):
@@ -51,6 +52,7 @@ class CallStackView(QTreeView):
                 self.contextMenu.addAction('复制').triggered.connect(self._copy)
                 self.contextMenu.addAction(
                     '复制路径').triggered.connect(self._copyPath)
+                self.contextMenu.addAction('删除').triggered.connect(self._delete)
                 self.contextMenu.addSeparator()
 
             self.contextMenu.addAction(
@@ -71,10 +73,18 @@ class CallStackView(QTreeView):
             print(e)
 
     def _copy(self) -> None:
-        index = self.selectedIndexes()[0]
-        item = index.model().itemFromIndex(index)
+        names = []
+        for index in self.selectedIndexes():
+            item = index.model().itemFromIndex(index)
+            names.append(item.text())
+
         clipboard = QApplication.clipboard()
-        clipboard.setText(item.text())
+        clipboard.setText('\n'.join(names))
+
+    def _delete(self) -> None:
+        while self.selectedIndexes():
+            idx = self.selectedIndexes()[0]
+            self.model().removeRow(idx.row(), idx.parent())
 
     def _copyPath(self) -> None:
         index = self.selectedIndexes()[0]
@@ -116,29 +126,33 @@ class CallStackView(QTreeView):
                     preChild = child
                     queue.append(child)
 
-    def _save(self, codeFolder: str) -> None:
-        src_dir = Path(codeFolder).joinpath('code')
+    def _save(self, work_dir: str) -> None:
+        src_dir = Path(work_dir).joinpath('code')
         if not src_dir.exists():
             Path(src_dir).mkdir()
 
+        lines = []
         model = self.model()
         rootNode = model.invisibleRootItem()
         stack = []
-        stack.append((rootNode, 0))
+        stack.append((rootNode, -1))
         while stack:
             elem = stack[-1][0]
             depth = stack[-1][1]
             stack.pop()
             if hasattr(elem, 'functionData'):
-                # print('    '*depth + elem.functionData.funtionName)
-                self._save_elem(elem, codeFolder)
+                lines.append('\t'*depth + f"{elem.id} {elem.functionData.funtionName}\n")
+                self._save_elem(elem, src_dir.absolute())
 
             for row in range(elem.rowCount() - 1, -1, -1):
                 child = elem.child(row, 0)
                 stack.append((child, depth + 1))
 
-    def _save_elem(self, elem: StandardItem, codeFolder: str) -> None:
-        src_filename = Path(codeFolder).joinpath('code', f"{elem.offset}.cpp")
+        with open(Path(work_dir).joinpath('tree.txt').absolute(), 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+
+    def _save_elem(self, elem: StandardItem, src_dir: str) -> None:
+        src_filename = Path(src_dir).joinpath(f"{elem.offset}.cpp")
         if not src_filename.exists():
             with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
                 content = elem.functionData.content()

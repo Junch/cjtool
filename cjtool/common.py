@@ -414,6 +414,7 @@ class FunctionData:
 
 class BreakPointHit:
     def __init__(self) -> None:
+        self.id = 0                # id号
         self.offset = 0            # 函数入口偏移量
         self.retOffset = 0         # 函数出口偏移量
         self.funtionName = ''      # 函数名
@@ -434,8 +435,7 @@ class BreakPointHit:
 
 
 class BreakPointPairError(Exception):
-    def __init__(self, lineNum: int, hit: BreakPointHit):
-        self.lineNum = lineNum
+    def __init__(self, hit: BreakPointHit):
         self.hit = hit
 
 
@@ -448,8 +448,9 @@ class BreakPointManager(object):
         self.pid = pid
         self.breakpointHits = []
         self.logfilepath = logfilepath
+        self.currentid = 100
 
-    def cleanup(self):
+    def create_json(self) -> str:
         functionHits = {}
         inspect = Inspect(self.pid)
         for hit in self.breakpointHits:
@@ -466,20 +467,50 @@ class BreakPointManager(object):
                 functionHits[offset] = data.__dict__
 
         o = {'hits': self.breakpointHits, 'functions': functionHits}
-
-        tfname = ''
         with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as json_file:
-            tfname = json_file.name
             json.dump(o, json_file, indent=4)
+            return json_file.name
 
-        if tfname:
-            zfname = Path(self.logfilepath).with_suffix('.zip')
-            with zipfile.ZipFile(zfname, 'w', zipfile.ZIP_DEFLATED) as zf:
-                zf.write(tfname, arcname='monitor.json')
+    def create_tree(self) -> str:
+        lines = []
+        stack = []
+        depth = -1
 
-            print(f'{zfname} is saved.')
-        else:
-            print_warning('Monitor log file is not saved.')
+        for item in self.breakpointHits:
+            hit = BreakPointHit()
+            hit.assign(item)
+
+            paired = False
+            if stack:
+                topItem = stack[-1]
+                if hit.pairWith(topItem):
+                    if hit.isStart:
+                        raise BreakPointPairError(hit)
+                    paired = True
+
+            if paired:
+                stack.pop()
+                depth = depth - 1
+            else:
+                if not hit.isStart:
+                    raise BreakPointPairError(hit)
+                stack.append(hit)
+                depth = depth + 1
+                lines.append('\t'*depth + f"{hit.id} {hit.funtionName}\n")
+
+        with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as treefile:
+            treefile.writelines(lines)
+            return treefile.name
+
+    def cleanup(self):
+        jsonfname = self.create_json()
+        treefname = self.create_tree()
+
+        zfname = Path(self.logfilepath).with_suffix('.zip')
+        with zipfile.ZipFile(zfname, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.write(jsonfname, arcname='monitor.json')
+            zf.write(treefname, arcname='tree.txt')
+        print(f'{zfname} is saved.')
 
     def writeLog(self, hit: BreakPointHit):
         local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -519,13 +550,14 @@ class BreakPointManager(object):
 
             def onHit(self):
                 hit = BreakPointHit()
+                hit.id = self.start.manager.currentid
                 hit.offset = self.start.offset
                 hit.retOffset = self.start.retOffset
                 hit.funtionName = self.start.symbol
                 hit.isStart = False
                 hit.threadId = pykd.getThreadSystemID()
                 self.start.manager.writeLog(hit)
-
+                self.start.manager.currentid = self.start.manager.currentid + 1
                 if self.type == BreakPointType.OneShot:
                     self.start.remove()
                 return False
@@ -555,6 +587,7 @@ class BreakPointManager(object):
                         appendix = f" {ret}"
 
                 hit = BreakPointHit()
+                hit.id = self.manager.currentid
                 hit.offset = self.offset
                 hit.retOffset = self.retOffset
                 hit.funtionName = self.symbol
@@ -562,6 +595,7 @@ class BreakPointManager(object):
                 hit.appendix = appendix
                 hit.threadId = pykd.getThreadSystemID()
                 self.manager.writeLog(hit)
+                self.manager.currentid = self.manager.currentid + 1
                 return False
 
         try:
