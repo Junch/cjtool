@@ -506,11 +506,10 @@ class BreakPointManager(object):
         jsonfname = self.create_json()
         treefname = self.create_tree()
 
-        zfname = Path(self.logfilepath).with_suffix('.zip')
-        with zipfile.ZipFile(zfname, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(self.logfilepath, 'w', zipfile.ZIP_DEFLATED) as zf:
             zf.write(jsonfname, arcname='monitor.json')
             zf.write(treefname, arcname='tree.txt')
-        print(f'{zfname} is saved.')
+        print(f'{self.logfilepath} is saved.')
 
     def writeLog(self, hit: BreakPointHit):
         local_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]

@@ -56,7 +56,7 @@ def main():
         config = yaml.safe_load(stream)
 
         pid = getProcessByName(config['name'])
-        logfilepath = Path(filepath).with_suffix('.json')
+        logfilepath = Path(filepath).with_suffix('.cst') ## short for callstack
         debugger = Debugger(pid, exepath=config['path'], logfilepath=logfilepath)
         debugger.setDaemon(True)
         for bp in config['breakpoints']:

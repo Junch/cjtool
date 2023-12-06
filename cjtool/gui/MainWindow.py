@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
             self.tempdir = None
 
         filename, _ = QFileDialog.getOpenFileName(
-            self, 'Open zip file', '', 'ZIP Files (*.zip)')
+            self, 'Open cst file', '', 'cst Files (*.cst)')
         if filename:
             zf = zipfile.ZipFile(filename)
             self.tempdir = tempfile.TemporaryDirectory()
@@ -152,7 +152,7 @@ class MainWindow(QMainWindow):
                 functionDict[k] = func
             return breakpoints, functionDict
 
-    def get_depth_id(self, line: str) -> tuple:
+    def split_line(self, line: str) -> tuple:
         depth = 0
         for c in line:
             if c == '\t':
@@ -168,33 +168,24 @@ class MainWindow(QMainWindow):
     def _parse_file(self, rootNode: StandardItem) -> None:
         breakpoints, functions = self.get_breakpoints()
 
-        stack = []
-        curRootNode: StandardItem = rootNode
-
         treefname = Path(self.tempdir.name).joinpath('tree.txt')
         with open(treefname, 'r', encoding='utf-8') as f:
             data = f.readlines()
-            depth = -1
+            stack = [(-1, rootNode)]
+
             for line in data:
-                curDepth, id, fname = self.get_depth_id(line)
+                depth, id, fname = self.split_line(line)
                 node = StandardItem(fname)
                 node.id = id
                 node.offset = breakpoints[id].offset
                 node.functionData = functions[node.offset]
 
-                if curDepth > depth:
-                    curRootNode.appendRow(node)
-                    stack.append((depth, curRootNode))
-                    depth = curDepth
-                elif curDepth == depth:
-                    parent = stack[-1][1]
-                    parent.appendRow(node)
-                else:
-                    while curDepth > depth:
-                        depth, curRootNode = stack[-1]
-                        stack.pop()
-                    curRootNode.appendRow(node)
-                curRootNode = node
+                preDepth, preNode = stack[-1]
+                while depth <= preDepth:
+                    stack.pop()
+                    preDepth, preNode = stack[-1]
+                preNode.appendRow(node)
+                stack.append((depth, node))
 
     def selectionChanged(self, selected, deselected) -> None:
         if not selected.indexes():
