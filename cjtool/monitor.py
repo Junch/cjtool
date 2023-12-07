@@ -57,7 +57,8 @@ def main():
 
         pid = getProcessByName(config['name'])
         logfilepath = Path(filepath).with_suffix('.cst') ## short for callstack
-        debugger = Debugger(pid, exepath=config['path'], logfilepath=logfilepath)
+        exepath = config['path'] if 'path' in config else ''
+        debugger = Debugger(pid, exepath, logfilepath=logfilepath)
         debugger.setDaemon(True)
         for bp in config['breakpoints']:
             debugger.addBreakPoint(bp)

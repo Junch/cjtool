@@ -391,6 +391,12 @@ class FunctionData:
         # 可能带namespace，而namespace很可能不包含在函数名所在的
         functionName = functionName.split('::')[-1] + '('
 
+        if not self.fileName:
+            return f"没有找到文件路径"
+        
+        if not Path(self.fileName).exists():
+            return f"没有找到文件 {self.fileName}"
+
         nCount = 20
         for i in range(self.startLineNumber, 0, -1):
             line = linecache.getline(self.fileName, i)
@@ -436,7 +442,8 @@ class BreakPointHit:
 
 class BreakPointPairError(Exception):
     def __init__(self, hit: BreakPointHit):
-        self.hit = hit
+        self.message = f"The hit {hit.id} is not matched"
+        super().__init__(self.message)
 
 
 class BreakPointManager(object):
@@ -476,27 +483,30 @@ class BreakPointManager(object):
         stack = []
         depth = -1
 
-        for item in self.breakpointHits:
-            hit = BreakPointHit()
-            hit.assign(item)
+        try:
+            for item in self.breakpointHits:
+                hit = BreakPointHit()
+                hit.assign(item)
 
-            paired = False
-            if stack:
-                topItem = stack[-1]
-                if hit.pairWith(topItem):
-                    if hit.isStart:
+                paired = False
+                if stack:
+                    topItem = stack[-1]
+                    if hit.pairWith(topItem):
+                        if hit.isStart:
+                            raise BreakPointPairError(hit)
+                        paired = True
+
+                if paired:
+                    stack.pop()
+                    depth = depth - 1
+                else:
+                    if not hit.isStart:
                         raise BreakPointPairError(hit)
-                    paired = True
-
-            if paired:
-                stack.pop()
-                depth = depth - 1
-            else:
-                if not hit.isStart:
-                    raise BreakPointPairError(hit)
-                stack.append(hit)
-                depth = depth + 1
-                lines.append('\t'*depth + f"{hit.id} {hit.funtionName}\n")
+                    stack.append(hit)
+                    depth = depth + 1
+                    lines.append('\t'*depth + f"{hit.id} {hit.funtionName}\n")
+        except Exception as errtxt:
+            print_warning(errtxt)
 
         with tempfile.NamedTemporaryFile(mode='w+t', delete=False, encoding='utf-8') as treefile:
             treefile.writelines(lines)
