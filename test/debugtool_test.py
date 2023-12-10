@@ -3,7 +3,7 @@ import subprocess
 from cjtool.debugtool import execute_command
 
 
-class execute_ommand_test(unittest.TestCase):
+class execute_command_test(unittest.TestCase):
 
     def setUp(self) -> None:
         self.proc = subprocess.Popen('notepad.exe')

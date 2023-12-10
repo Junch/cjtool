@@ -36,7 +36,40 @@ def print_warning(msg):
     print("{0}WARNING: {2}{1}".format(bcolors.WARNING, bcolors.ENDC, msg))
 
 
-def getProcessByName(name):
+# cache
+cache_dword_size = None
+
+
+def get_arch():
+    # https://github.com/CENSUS/shadow/blob/master/pykd_engine.py
+    if pykd.is64bitSystem():
+        return 'x86-64'
+    return 'x86'
+
+
+def get_dword_size():
+    global cache_dword_size
+    if not cache_dword_size:
+        arch = get_arch()
+        if arch == 'x86':
+            cache_dword_size = 4
+        if arch == 'x86-64':
+            cache_dword_size = 8
+    return cache_dword_size
+
+
+def read_dwords(addr, size):
+    if get_dword_size() == 4:
+        return pykd.loadDWords(addr, size)
+    else:
+        return pykd.loadQWords(addr, size)
+
+
+def read_dword(addr):
+    return read_dwords(addr, 1)[0]
+
+
+def getProcessByName(name) -> int:
     processid = 0
     lower_name = name.lower()
     for (pid, pname, user) in pykd.getLocalProcesses():
@@ -63,7 +96,7 @@ class BaseType:
 
         (moduleName, methodName) = self.typename.split('!')
         mod = pykd.module(moduleName)
-        symbol = "{}::`vftable'".format(methodName)
+        symbol = f"{methodName}::`vftable'"
         for (name, address) in mod.enumSymbols(symbol):
             self.vftables.append(address)
         self.vftables.sort()
@@ -85,25 +118,21 @@ class BaseType:
         vftables = self.get_vftables()
         nCount = len(vftables)
         for index, addr in enumerate(vftables):
-            # print("{:08x} ######## ######## {}".format(addr, index))
             self.vftable_methods.append([])
             while True:
-                func_addr = pykd.loadDWords(addr, 1)[0]
+                func_addr = read_dword(addr)
                 symbol = pykd.findSymbol(func_addr)
-                if symbol == "{:x}".format(func_addr):
+                if symbol == f"{func_addr:x}":  # 没有找到symbol
                     break
 
                 self.vftable_methods[index].append((addr, func_addr, symbol))
-                # print("{:08x} {:08x} {}".format(addr, func_addr, symbol))
-                addr = addr + 4
-                if (index + 1 < nCount and addr >= vftables[index + 1]):
-                    break
+                addr = addr + get_dword_size()
         return self.vftable_methods
 
     def print_vftable_methods(self):
         vftable_methods = self.get_vftable_methods()
         for index, methods in enumerate(vftable_methods):
-            print("######## ######## {}".format(index))
+            print(f"######## {index}")
             for method in methods:
                 print("{:08x} {:08x} {}".format(method[0], method[1],
                                                 method[2]))
@@ -393,7 +422,7 @@ class FunctionData:
 
         if not self.fileName:
             return f"没有找到文件路径"
-        
+
         if not Path(self.fileName).exists():
             return f"没有找到文件 {self.fileName}"
 
