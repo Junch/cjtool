@@ -1,8 +1,10 @@
-from common import *
+from common import print_warning, getProcessByName
+from debuger import Debugger, exit_gracefully
 import signal
 import yaml
 import argparse
 from pathlib import Path
+
 
 yaml_str = '''
 name: observer.exe
@@ -35,7 +37,22 @@ def adjust_file_path(filename: str) -> str:
 
     newpath = Path.cwd().joinpath(filename)
     if Path(newpath).is_file():
-        return newpath
+        return str(newpath.absolute())
+
+    return None
+
+
+def get_exe_file_path(yamlPath: str, exePath: str) -> str:
+    if not exePath:
+        return ''
+
+    # 绝对路径
+    if Path(exePath).is_file():
+        return exePath
+    # 相对路径
+    newPath = Path(yamlPath).parent.joinpath(exePath)
+    if Path(newPath).is_file():
+        return str(newPath.absolute())
 
     return None
 
@@ -56,8 +73,10 @@ def main():
         config = yaml.safe_load(stream)
 
         pid = getProcessByName(config['name'])
-        logfilepath = Path(filepath).with_suffix('.cst') ## short for callstack
+        logfilepath = Path(filepath).with_suffix('.cst')  # short for callstack
         exepath = config['path'] if 'path' in config else ''
+        exepath = get_exe_file_path(filepath, exepath)
+
         debugger = Debugger(pid, exepath, logfilepath=logfilepath)
         debugger.setDaemon(True)
         for bp in config['breakpoints']:

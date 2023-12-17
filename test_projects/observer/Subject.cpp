@@ -1,5 +1,7 @@
 #include "Subject.h"
 
+using namespace std;
+
 Subject::Subject()= default;
 
 Subject::~Subject()= default;

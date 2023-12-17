@@ -25,6 +25,11 @@ def get_processid_by_name(proc_name: str) -> list[int]:
             if match_obj:
                 processid = int(match_obj.group(1))
                 processids.append(processid)
+
+    proc.stdout.close()
+    proc.stderr.close()
+    proc.kill()
+    proc.wait()
     return processids
 
 
@@ -40,7 +45,8 @@ def execute_command(proc_name: str, command: str) -> bool:
         print(f'{Fore.YELLOW}WARN{Fore.RESET}: More than one process is found by name "{proc_name}". '
               'Only the first one will be printed.')
 
-    cmd = f'cdb.exe -c ".logopen /t /u /d;{command};qd" -pv -p {processids[0]}'
+    # cmd = f'cdb.exe -c ".logopen /t /u /d;{command};qd" -pv -p {processids[0]}'
+    cmd = f'cdb.exe -c "{command};qd" -pv -p {processids[0]}'
     child = popen_spawn.PopenSpawn(cmd)
     need_print_line = False  # 在出现0:000>前都不打印出来
 
@@ -72,6 +78,11 @@ def execute_command(proc_name: str, command: str) -> bool:
 
             sys.stdout.write(content)
             sys.stdout.flush()
+
+    # 不加的话有警告  ResourceWarning: unclosed file
+    # 加上的话 单元测试就只能跑一个
+    # sys.stderr.close()
+    child.wait()
     return True
 
 

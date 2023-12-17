@@ -2,17 +2,16 @@
 #include "Observer.h"
 #include <string>
 #include <memory>
-using namespace std;
 
 class ConcreteObserver : public Observer
 {
 
 public:
-    ConcreteObserver(string name);
+    ConcreteObserver(std::string name);
     ~ConcreteObserver();
-    virtual void update(shared_ptr<Subject> sub);
+    virtual void update(std::shared_ptr<Subject> sub);
 
 private:
-    string m_objName;
+    std::string m_objName;
     int m_observerState;
 };

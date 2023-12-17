@@ -1,4 +1,4 @@
-from common import BreakPointHit, BreakPointPairError, FunctionData
+from debuger import BreakPointHit, BreakPointPairError, FunctionData
 from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from PyQt5.QtCore import Qt

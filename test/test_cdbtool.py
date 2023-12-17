@@ -1,16 +1,18 @@
 import unittest
 import subprocess
-from cjtool.debugtool import execute_command
+from cjtool.cdbtool import execute_command
 
 
-class execute_command_test(unittest.TestCase):
+class TestCdbTool(unittest.TestCase):
 
-    def setUp(self) -> None:
-        self.proc = subprocess.Popen('notepad.exe')
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.proc = subprocess.Popen('notepad.exe')
 
-    def tearDown(self) -> None:
-        self.proc.kill()
-        return super().tearDown()
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.proc.kill()
+        cls.proc.wait()
 
     def test_kcn_command(self):
         self.assertTrue(execute_command('notepad.exe', 'kcn'))

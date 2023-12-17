@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.Qt import QStandardItem
-from common import FunctionData
+from debuger import FunctionData
 from pathlib import Path
 import zipfile
 import tempfile

@@ -6,7 +6,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='cjtool',
-      version='0.28.7',
+      version='0.28.8',
       description='Provide some tools in C++ development',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -20,7 +20,7 @@ setup(name='cjtool',
       entry_points={
           'console_scripts':
           ['stringrep = cjtool.stringtool:main', 
-           'ct = cjtool.debugtool:main', 
+           'ct = cjtool.cdbtool:main', 
            'cm = cjtool.monitor:main', 
            'ci = cjtool.indent:main',
            'cs = cjtool.search:main',

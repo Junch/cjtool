@@ -1,0 +1,8 @@
+name: observer.exe
+path: .\observer.exe
+breakpoints: 
+  - observer!Subject::attach
+  - observer!Subject::detach
+  - observer!Subject::notify
+  - observer!ConcreteObserver::*
+  - observer!ConcreteSubject::*

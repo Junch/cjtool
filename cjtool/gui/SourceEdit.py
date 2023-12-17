@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QFont, QFontMetrics, QColor, QSyntaxHighlighter, QTextCharFormat
 from PyQt5.QtWidgets import QPlainTextEdit
 from gui.CallStackView import StandardItem
-from common import FunctionData
+from debuger import FunctionData
 from pygments import highlight
 from pygments.lexers import *
 from pygments.formatter import Formatter
