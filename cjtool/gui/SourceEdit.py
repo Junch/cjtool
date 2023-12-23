@@ -90,17 +90,18 @@ class SourceEdit(QPlainTextEdit):
         font = QFont('Inconsolata')
         font.setStyleHint(QFont.Monospace)
         font.setFixedPitch(True)
+        font.setPointSize(12)
         self.setFont(font)
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
 
         # 设置pygments的内建style
-        style_name = 'nord-darker'  # github-dark', 'solarized-dark'
-        self.formatter = CodeFormatter(style=style_name, font=font)
-        style = get_style_by_name(style_name)
-        bgcolor = style.background_color
-        self.setStyleSheet(f"background-color: {bgcolor};")
+        # style_name = 'nord-darker'  # github-dark', 'solarized-dark'
+        # self.formatter = CodeFormatter(style=style_name, font=font)
+        # style = get_style_by_name(style_name)
+        # bgcolor = style.background_color
+        # self.setStyleSheet(f"background-color: {bgcolor};")
 
     def setCodeFolder(self, folder: str):
         self.codeFolder = folder
@@ -126,7 +127,7 @@ class SourceEdit(QPlainTextEdit):
 
         self.setPlainText(content)
 
-        # Highlighting
-        lexer = get_lexer_by_name('cpp')
-        self._highlighter = CodeHighlighter(
-            self.document(), lexer, self.formatter)
+        # # Highlighting
+        # lexer = get_lexer_by_name('cpp')
+        # self._highlighter = CodeHighlighter(
+        #     self.document(), lexer, self.formatter)
