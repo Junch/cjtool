@@ -14,16 +14,18 @@ setup(name='cjtool',
       author='Jun Chen',
       author_email='junc76@gmail.com',
       license='MIT',
-      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd', 'PyYAML', \
+      install_requires=['colorama', 'pyperclip', 'pexpect', 'pykd', 'PyYAML',
                         'sourceline', 'PyQt5', 'pygments', 'qdarkstyle'],
       packages=find_packages(exclude=['test', 'test_projects']),
       entry_points={
           'console_scripts':
-          ['stringrep = cjtool.stringtool:main', 
-           'ct = cjtool.cdbtool:main', 
-           'cm = cjtool.monitor:main', 
+          ['stringrep = cjtool.stringtool:main',
+           'ct = cjtool.cdbtool:main',
+           'cm = cjtool.monitor:main',
            'ci = cjtool.indent:main',
-           'cs = cjtool.search:main',
-           'cui = cjtool.indent_ui:main']
+           'cs = cjtool.search:main'
+           ],
+          'gui_scripts':
+          ['cui = cjtool.indent_ui:main']
       },
       zip_safe=False)

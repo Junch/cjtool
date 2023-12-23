@@ -53,7 +53,7 @@ def execute_command(proc_name: str, command: str) -> bool:
     while True:
         # expect_exact()和expect()是一样的，唯一不同的就是它的匹配列表中不再使用正则表达式。
         index = child.expect(['^0:000>', b'\n', EOF, TIMEOUT,
-                             '^\s?quit:', '\^ Syntax error in \''], timeout=5)
+                             '^\s?quit:', ' error '], timeout=5)
 
         line = b''
         if index == 0:  # 遇到第一个prompt 0:000>
@@ -65,7 +65,9 @@ def execute_command(proc_name: str, command: str) -> bool:
             need_print_line = False
         elif index == 4:  # 遇到quit命令
             need_print_line = False
-        elif index == 5:  # 输入了qwert等奇怪的命令
+        elif index == 5:  # 遇到error比如
+            # 1. 输入了qwert等奇怪的命令。'Syntax error in'
+            # 2. 执行命令uf module!function，如果有多个同名的函数。'Ambiguous symbol error at'
             line = child.before + child.after
             child.sendline('qd')
         else:

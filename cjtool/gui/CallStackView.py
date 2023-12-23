@@ -3,8 +3,6 @@ from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.Qt import QStandardItem
 from debuger import FunctionData
 from pathlib import Path
-import zipfile
-import tempfile
 
 
 class StandardItem(QStandardItem):
@@ -33,7 +31,8 @@ class CallStackView(QTreeView):
         self.setHeaderHidden(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._rightClickMenu)
-        self.setSelectionMode(QAbstractItemView.SelectionMode.ContiguousSelection)
+        self.setSelectionMode(
+            QAbstractItemView.SelectionMode.ContiguousSelection)
         self.bStyleSheetNone = False
 
     def clear(self):
@@ -52,7 +51,8 @@ class CallStackView(QTreeView):
                 self.contextMenu.addAction('复制').triggered.connect(self._copy)
                 self.contextMenu.addAction(
                     '复制路径').triggered.connect(self._copyPath)
-                self.contextMenu.addAction('删除').triggered.connect(self._delete)
+                self.contextMenu.addAction(
+                    '删除').triggered.connect(self._delete)
                 self.contextMenu.addSeparator()
 
             self.contextMenu.addAction(
@@ -141,7 +141,8 @@ class CallStackView(QTreeView):
             depth = stack[-1][1]
             stack.pop()
             if hasattr(elem, 'functionData'):
-                lines.append('\t'*depth + f"{elem.id} {elem.functionData.funtionName}\n")
+                lines.append(
+                    '\t'*depth + f"{elem.id} {elem.functionData.funtionName}\n")
                 self._save_elem(elem, src_dir.absolute())
 
             for row in range(elem.rowCount() - 1, -1, -1):
