@@ -57,38 +57,43 @@ class MainWindow(QMainWindow):
 
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
-        treeView = CallStackView()
-        treeModel = QStandardItemModel()
-        treeView.setModel(treeModel)
-        self.setCentralWidget(treeView)
+        self.tree_view = CallStackView()
+        self.tree_view.setModel(QStandardItemModel())
+        self.tree_view.selectionModel().selectionChanged.connect(self.selectionChanged)
+        self.setCentralWidget(self.tree_view)
         self.setContentsMargins(4, 0, 4, 0)
 
-        sourceEdit = SourceEdit()
-        docker = QDockWidget('source', self)
-        docker.setWidget(sourceEdit)
-        docker.setTitleBarWidget(QWidget())
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docker)
-
-        treeView.selectionModel().selectionChanged.connect(sourceEdit.selectionChanged)
-        treeView.selectionModel().selectionChanged.connect(self.selectionChanged)
-
-        commentEdit = CommentEdit()
-        comment_docker = QDockWidget('comments', self)
-        comment_docker.setWidget(commentEdit)
-        comment_docker.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable |
-                                   QDockWidget.DockWidgetFeature.DockWidgetMovable)
-
-        self.addDockWidget(
-            Qt.DockWidgetArea.RightDockWidgetArea, comment_docker)
-        self.resizeDocks([docker, comment_docker], [
-                         7, 3], Qt.Orientation.Horizontal)
-
-        self.treeView: CallStackView = treeView
-        self.sourceEdit: SourceEdit = sourceEdit
-        self.comment_docker: CommentEdit = comment_docker
+        source_docker = self._addSourceDock()
+        comment_docker = self._addCommentDock()
+        self.resizeDocks([source_docker, comment_docker], [
+                         7, 3], Qt.Orientation.Vertical)
 
         self.tempdir = None
         self.filename = ''
+
+    def _addSourceDock(self):
+        source_edit = SourceEdit()
+        docker = QDockWidget('source', self)
+        docker.setWidget(source_edit)
+        docker.setTitleBarWidget(QWidget())
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docker)
+        self.tree_view.selectionModel().selectionChanged.connect(
+            source_edit.selectionChanged)
+        self.source_edit: SourceEdit = source_edit
+        return docker
+
+    def _addCommentDock(self):
+        comment_edit = CommentEdit()
+        docker = QDockWidget('comment', self)
+        docker.setWidget(comment_edit)
+        docker.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable |
+                           QDockWidget.DockWidgetFeature.DockWidgetMovable)
+        self.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, docker)
+        self.tree_view.selectionModel().selectionChanged.connect(
+            comment_edit.selectionChanged)
+        self.comment_docker = docker
+        return docker
 
     def _fillContent(self, rootNode) -> None:
         filepath = ''
@@ -122,7 +127,7 @@ class MainWindow(QMainWindow):
 
     def _save_file(self) -> None:
         # 保存代码到零时目录
-        self.treeView._save(self.tempdir.name)
+        self.tree_view._save(self.tempdir.name)
         zipDir(self.tempdir.name, self.filename)
 
     def _open_file(self) -> None:
@@ -136,11 +141,11 @@ class MainWindow(QMainWindow):
             zf = zipfile.ZipFile(filename)
             self.tempdir = tempfile.TemporaryDirectory()
             zf.extractall(self.tempdir.name)
-            self.treeView.clear()
-            self.sourceEdit.setCodeFolder(self.tempdir.name)
-            rootNode = self.treeView.model().invisibleRootItem()
+            self.tree_view.clear()
+            self.source_edit.setCodeFolder(self.tempdir.name)
+            rootNode = self.tree_view.model().invisibleRootItem()
             self._parse_file(rootNode)
-            self.treeView.expandAll()
+            self.tree_view.expandAll()
             self.filename = filename
 
     def _show_comment(self) -> None:
