@@ -95,6 +95,7 @@ class SourceEdit(QPlainTextEdit):
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
+        self.setMinimumWidth(500)
 
         # 设置pygments的内建style
         # style_name = 'nord-darker'  # github-dark', 'solarized-dark'

@@ -1,8 +1,10 @@
-from debuger import BreakPointHit, BreakPointPairError, FunctionData
+from debuger import BreakPointHit, FunctionData
 from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
+from gui.CommentEdit import CommentEdit
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHBoxLayout, QMainWindow, QSplitter, QWidget, QStatusBar, QFileDialog, QAction, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QWidget, \
+    QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
 import json
@@ -55,31 +57,35 @@ class MainWindow(QMainWindow):
 
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
-        mainWnd = QWidget()
-        self.setCentralWidget(mainWnd)
-        layout = QHBoxLayout()
-        mainWnd.setLayout(layout)
-
-        splitter = QSplitter(Qt.Horizontal)
-
-        # Left is QTreeView
         treeView = CallStackView()
         treeModel = QStandardItemModel()
         treeView.setModel(treeModel)
+        self.setCentralWidget(treeView)
+        self.setContentsMargins(4, 0, 4, 0)
 
-        # Right is QTextEdit
         sourceEdit = SourceEdit()
-
-        splitter.addWidget(treeView)
-        splitter.addWidget(sourceEdit)
-        splitter.setStretchFactor(0, 4)
-        splitter.setStretchFactor(1, 6)
-        layout.addWidget(splitter)
+        docker = QDockWidget('source', self)
+        docker.setWidget(sourceEdit)
+        docker.setTitleBarWidget(QWidget())
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docker)
 
         treeView.selectionModel().selectionChanged.connect(sourceEdit.selectionChanged)
         treeView.selectionModel().selectionChanged.connect(self.selectionChanged)
+
+        commentEdit = CommentEdit()
+        comment_docker = QDockWidget('comments', self)
+        comment_docker.setWidget(commentEdit)
+        comment_docker.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable |
+                                   QDockWidget.DockWidgetFeature.DockWidgetMovable)
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, comment_docker)
+        self.resizeDocks([docker, comment_docker], [
+                         7, 3], Qt.Orientation.Horizontal)
+
         self.treeView: CallStackView = treeView
         self.sourceEdit: SourceEdit = sourceEdit
+        self.comment_docker: CommentEdit = comment_docker
 
         self.tempdir = None
         self.filename = ''
@@ -94,7 +100,7 @@ class MainWindow(QMainWindow):
 
     def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
-        fileMenu = menuBar.addMenu("&File")
+        fileMenu = menuBar.addMenu('&File')
 
         openAct = QAction('&Open', self)
         openAct.triggered.connect(self._open_file)
@@ -104,10 +110,15 @@ class MainWindow(QMainWindow):
         saveAct.triggered.connect(self._save_file)
         fileMenu.addAction(saveAct)
 
-        helpMenu = menuBar.addMenu("&Help")
+        viewMenu = menuBar.addMenu('&View')
+        showAct = QAction('&Comment Window', self)
+        showAct.triggered.connect(self._show_comment)
+        viewMenu.addAction(showAct)
+
+        helpMenu = menuBar.addMenu('&Help')
         statusBar = QStatusBar()
         self.setStatusBar(statusBar)
-        statusBar.showMessage("...")
+        statusBar.showMessage('')
 
     def _save_file(self) -> None:
         # 保存代码到零时目录
@@ -131,6 +142,13 @@ class MainWindow(QMainWindow):
             self._parse_file(rootNode)
             self.treeView.expandAll()
             self.filename = filename
+
+    def _show_comment(self) -> None:
+        visible = self.comment_docker.isVisible()
+        if visible:
+            self.comment_docker.hide()
+        else:
+            self.comment_docker.show()
 
     def get_breakpoints(self) -> tuple:
         monitor_file = Path(self.tempdir.name).joinpath('monitor.json')
