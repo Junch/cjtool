@@ -3,9 +3,9 @@ from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from gui.CommentEdit import CommentEdit
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QWidget, \
+from PyQt5.QtWidgets import QMainWindow, QWidget, QStyle, \
     QStatusBar, QFileDialog, QAction, QDockWidget
-from PyQt5.QtGui import QStandardItemModel
+from PyQt5.QtGui import QStandardItemModel, QIcon
 from pathlib import Path
 import json
 import sys
@@ -67,7 +67,10 @@ class MainWindow(QMainWindow):
         comment_docker = self._addCommentDock()
         self.resizeDocks([source_docker, comment_docker], [
                          7, 3], Qt.Orientation.Vertical)
-
+        
+        commentIcon = QStyle.SP_FileDialogDetailedView
+        self.icon = self.style().standardIcon(commentIcon)
+        
         self.tempdir = None
         self.filename = ''
 
@@ -93,6 +96,8 @@ class MainWindow(QMainWindow):
         self.tree_view.selectionModel().selectionChanged.connect(
             comment_edit.selectionChanged)
         self.comment_docker = docker
+        self.comment_edit = comment_edit
+        comment_edit.textChanged.connect(self.onCommentChanged)
         return docker
 
     def _fillContent(self, rootNode) -> None:
@@ -223,3 +228,16 @@ class MainWindow(QMainWindow):
         filefullpath = item.functionData.fileName
         self.statusBar().showMessage(
             f"{filefullpath}({item.functionData.startLineNumber})")
+       
+    def onCommentChanged(self):
+        index = self.tree_view.selectedIndexes()[0]
+        item: StandardItem = index.model().itemFromIndex(index)
+        functionData = item.functionData
+        if not functionData:
+            return
+        
+        items = self.tree_view.getSameItems(item)
+        comment = self.comment_edit.document().toPlainText()
+        for item in items:
+            icon = self.icon if comment else QIcon()
+            item.setIcon(icon)

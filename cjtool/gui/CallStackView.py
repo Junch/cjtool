@@ -158,3 +158,28 @@ class CallStackView(QTreeView):
             with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
                 content = elem.functionData.content()
                 f.write(content)
+
+    def iterItems(self, root):
+        # https://stackoverflow.com/questions/41949370/collect-all-items-in-qtreeview-recursively
+        def recurse(parent):
+            for row in range(parent.rowCount()):
+                for column in range(parent.columnCount()):
+                    child = parent.child(row, column)
+                    yield child
+                    if child.hasChildren():
+                        yield from recurse(child)
+        if root is not None:
+            yield from recurse(root)
+
+    def getSameItems(self, item: StandardItem) -> list[StandardItem]:
+        arr = []
+        if not item.functionData:
+            return arr
+
+        model = self.model()
+        root = model.invisibleRootItem()
+        for node in self.iterItems(root):
+            if node.functionData == item.functionData:
+                arr.append(node)
+
+        return arr

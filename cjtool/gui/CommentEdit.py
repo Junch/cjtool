@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QPlainTextEdit
-from PyQt5.QtGui import QFont, QFontMetrics
+from PyQt5.QtWidgets import QPlainTextEdit, QStyle
+from PyQt5.QtGui import QFont, QFontMetrics, QStandardItem
 from gui.CallStackView import StandardItem
 
 
@@ -14,6 +14,7 @@ class CommentEdit(QPlainTextEdit):
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
+        self.functionData = None
 
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
@@ -25,3 +26,15 @@ class CommentEdit(QPlainTextEdit):
         item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
         if not item.functionData:
             return
+
+        # 如果前面的数据修改了
+        if self.functionData:
+            if self.document().isModified():
+                comment = self.toPlainText()
+                self.functionData.comment = comment
+                self.document().setModified(False)
+
+        self.functionData = item.functionData
+        comment = self.functionData.comment if hasattr(
+            self.functionData, 'comment') else ''
+        self.setPlainText(comment)
