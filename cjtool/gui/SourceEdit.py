@@ -104,8 +104,8 @@ class SourceEdit(QPlainTextEdit):
         # bgcolor = style.background_color
         # self.setStyleSheet(f"background-color: {bgcolor};")
 
-    def setCodeFolder(self, folder: str):
-        self.codeFolder = folder
+    def setWorkDir(self, folder: str):
+        self.work_dir = folder
 
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
@@ -119,7 +119,7 @@ class SourceEdit(QPlainTextEdit):
             return
 
         content = ''
-        src_filename = Path(self.codeFolder).joinpath('code', f"{item.offset}.cpp")
+        src_filename = Path(self.work_dir).joinpath('code', f"{item.offset}.cpp")
         if src_filename.exists():
             with open(src_filename.absolute(), 'r', encoding='utf-8') as f:
                 content = f.read()

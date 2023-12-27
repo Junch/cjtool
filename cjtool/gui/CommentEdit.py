@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import QPlainTextEdit, QStyle
-from PyQt5.QtGui import QFont, QFontMetrics, QStandardItem
+from PyQt5.QtWidgets import QPlainTextEdit
+from PyQt5.QtGui import QFont, QFontMetrics
 from gui.CallStackView import StandardItem
+from debuger import FunctionData
 
 
 class CommentEdit(QPlainTextEdit):
@@ -16,6 +17,9 @@ class CommentEdit(QPlainTextEdit):
         self.setTabStopDistance(4 * width)
         self.functionData = None
 
+    def setWorkDir(self, folder: str):
+        self.work_dir = folder
+
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
         if not selected.indexes():
@@ -27,7 +31,7 @@ class CommentEdit(QPlainTextEdit):
         if not item.functionData:
             return
 
-        # 如果前面的数据修改了
+        # 如果前面的数据修改了，保存数据
         if self.functionData:
             if self.document().isModified():
                 comment = self.toPlainText()
@@ -38,3 +42,9 @@ class CommentEdit(QPlainTextEdit):
         comment = self.functionData.comment if hasattr(
             self.functionData, 'comment') else ''
         self.setPlainText(comment)
+
+    def beforeSave(self, data: FunctionData):
+        if self.document().isModified():
+            comment = self.toPlainText()
+            data.comment = comment
+            self.document().setModified(False)

@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.Qt import QStandardItem
 from debuger import FunctionData
@@ -131,6 +131,10 @@ class CallStackView(QTreeView):
         if not src_dir.exists():
             Path(src_dir).mkdir()
 
+        comment_dir = Path(work_dir).joinpath('comment')
+        if not comment_dir.exists():
+            Path(comment_dir).mkdir()
+
         lines = []
         model = self.model()
         rootNode = model.invisibleRootItem()
@@ -143,7 +147,7 @@ class CallStackView(QTreeView):
             if hasattr(elem, 'functionData'):
                 lines.append(
                     '\t'*depth + f"{elem.id} {elem.functionData.funtionName}\n")
-                self._save_elem(elem, src_dir.absolute())
+                self._save_elem(elem, work_dir)
 
             for row in range(elem.rowCount() - 1, -1, -1):
                 child = elem.child(row, 0)
@@ -152,12 +156,24 @@ class CallStackView(QTreeView):
         with open(Path(work_dir).joinpath('tree.txt').absolute(), 'w', encoding='utf-8') as f:
             f.writelines(lines)
 
-    def _save_elem(self, elem: StandardItem, src_dir: str) -> None:
-        src_filename = Path(src_dir).joinpath(f"{elem.offset}.cpp")
+    def _save_elem(self, elem: StandardItem, work_dir: str) -> None:
+        src_filename = Path(work_dir).joinpath(
+            'code').joinpath(f"{elem.offset}.cpp")
         if not src_filename.exists():
             with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
                 content = elem.functionData.content()
                 f.write(content)
+
+        comment = elem.functionData.comment if hasattr(
+            elem.functionData, 'comment') else ''
+        cmt_filename = Path(work_dir).joinpath(
+            'comment').joinpath(f"{elem.offset}.txt")
+        if comment:
+            with open(cmt_filename.absolute(), 'w', encoding='utf-8') as f:
+                f.write(comment)
+        else:
+            if cmt_filename.exists():
+                cmt_filename.unlink()
 
     def iterItems(self, root):
         # https://stackoverflow.com/questions/41949370/collect-all-items-in-qtreeview-recursively
@@ -183,3 +199,12 @@ class CallStackView(QTreeView):
                 arr.append(node)
 
         return arr
+
+    def getCurrentFunctionData(self) -> FunctionData:
+        indexes = self.selectedIndexes()
+        if len(indexes) == 0:
+            return None
+
+        index = self.selectedIndexes()[0]
+        item: StandardItem = index.model().itemFromIndex(index)
+        return item.functionData

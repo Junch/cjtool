@@ -2,7 +2,7 @@ from debuger import BreakPointHit, FunctionData
 from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from gui.CommentEdit import CommentEdit
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QStyle, \
     QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QStandardItemModel, QIcon
@@ -48,9 +48,11 @@ def zipDir(dirpath: str, outFullName: str) -> None:
 
 
 class MainWindow(QMainWindow):
+    beforeSave = pyqtSignal(FunctionData)
+
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle('流程图')
+        self.setWindowTitle('CodeBook')
         self.resize(1200, 900)
 
         self._createMenuBar()
@@ -98,6 +100,7 @@ class MainWindow(QMainWindow):
         self.comment_docker = docker
         self.comment_edit = comment_edit
         comment_edit.textChanged.connect(self.onCommentChanged)
+        self.beforeSave.connect(comment_edit.beforeSave)
         return docker
 
     def _fillContent(self, rootNode) -> None:
@@ -132,6 +135,8 @@ class MainWindow(QMainWindow):
 
     def _save_file(self) -> None:
         # 保存代码到零时目录
+        functionData = self.tree_view.getCurrentFunctionData()
+        self.beforeSave.emit(functionData)
         self.tree_view._save(self.tempdir.name)
         zipDir(self.tempdir.name, self.filename)
 
@@ -143,11 +148,13 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(
             self, 'Open cst file', '', 'cst Files (*.cst)')
         if filename:
+            self.setWindowTitle(f"CodeBook: {Path(filename).stem}")
             zf = zipfile.ZipFile(filename)
             self.tempdir = tempfile.TemporaryDirectory()
             zf.extractall(self.tempdir.name)
             self.tree_view.clear()
-            self.source_edit.setCodeFolder(self.tempdir.name)
+            self.source_edit.setWorkDir(self.tempdir.name)
+            self.comment_edit.setWorkDir(self.tempdir.name)
             rootNode = self.tree_view.model().invisibleRootItem()
             self._parse_file(rootNode)
             self.tree_view.expandAll()
@@ -208,6 +215,13 @@ class MainWindow(QMainWindow):
                 node.offset = breakpoints[id].offset
                 node.functionData = functions[node.offset]
 
+                cmt_filename = Path(self.tempdir.name).joinpath(f"comment/{node.offset}.txt")
+                if cmt_filename.exists():
+                    node.setIcon(self.icon)
+                    with open(cmt_filename.absolute(), 'r', encoding='utf-8') as f:
+                        comment = f.read()
+                        node.functionData.comment = comment
+
                 preDepth, preNode = stack[-1]
                 while depth <= preDepth:
                     stack.pop()
@@ -228,14 +242,17 @@ class MainWindow(QMainWindow):
         filefullpath = item.functionData.fileName
         self.statusBar().showMessage(
             f"{filefullpath}({item.functionData.startLineNumber})")
-       
+
     def onCommentChanged(self):
+        if not self.tree_view.selectedIndexes():
+            return
+
         index = self.tree_view.selectedIndexes()[0]
         item: StandardItem = index.model().itemFromIndex(index)
         functionData = item.functionData
         if not functionData:
             return
-        
+
         items = self.tree_view.getSameItems(item)
         comment = self.comment_edit.document().toPlainText()
         for item in items:
