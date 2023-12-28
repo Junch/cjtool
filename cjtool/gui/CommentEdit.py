@@ -1,10 +1,13 @@
 from PyQt5.QtWidgets import QPlainTextEdit
 from PyQt5.QtGui import QFont, QFontMetrics
-from gui.CallStackView import StandardItem
+from PyQt5.QtCore import pyqtSignal
 from debuger import FunctionData
+from gui.Document import StandardItem, Document
 
 
 class CommentEdit(QPlainTextEdit):
+    commentChanged = pyqtSignal(str)
+
     def __init__(self) -> None:
         super().__init__()
         font = QFont('Inconsolata')
@@ -15,10 +18,8 @@ class CommentEdit(QPlainTextEdit):
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
+        self.textChanged.connect(self.textChangedAction)
         self.functionData = None
-
-    def setWorkDir(self, folder: str):
-        self.work_dir = folder
 
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
@@ -48,3 +49,7 @@ class CommentEdit(QPlainTextEdit):
             comment = self.toPlainText()
             data.comment = comment
             self.document().setModified(False)
+
+    def textChangedAction(self):
+        comment = self.toPlainText()
+        self.commentChanged.emit(comment)

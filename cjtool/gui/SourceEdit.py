@@ -1,12 +1,13 @@
 from PyQt5.QtGui import QFont, QFontMetrics, QColor, QSyntaxHighlighter, QTextCharFormat
 from PyQt5.QtWidgets import QPlainTextEdit
-from gui.CallStackView import StandardItem
+from gui.Document import StandardItem, Document
 from debuger import FunctionData
 from pygments import highlight
 from pygments.lexers import *
 from pygments.formatter import Formatter
 from pygments.styles import get_style_by_name
 from pathlib import Path
+
 
 # https://github.com/agoose77/hive2/blob/235a2f01dfd922f56d850062f2219bd444d24e7e/hive_editor/qt/code_editor.py
 # https://ralsina.me/static/highlighter.py
@@ -104,8 +105,8 @@ class SourceEdit(QPlainTextEdit):
         # bgcolor = style.background_color
         # self.setStyleSheet(f"background-color: {bgcolor};")
 
-    def setWorkDir(self, folder: str):
-        self.work_dir = folder
+    def setDocument(self, doc: Document):
+        self.document: Document = doc
 
     def selectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
@@ -118,14 +119,7 @@ class SourceEdit(QPlainTextEdit):
         if not item.functionData:
             return
 
-        content = ''
-        src_filename = Path(self.work_dir).joinpath('code', f"{item.offset}.cpp")
-        if src_filename.exists():
-            with open(src_filename.absolute(), 'r', encoding='utf-8') as f:
-                content = f.read()
-        else:
-            content = item.functionData.content()
-
+        content = self.document.get_source(item.functionData)
         self.setPlainText(content)
 
         # # Highlighting
