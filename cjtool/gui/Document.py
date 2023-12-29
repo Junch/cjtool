@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from debuger import BreakPointHit, FunctionData
 from PyQt5.Qt import QStandardItem, QIcon
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QObject
 import os
 
 
@@ -50,13 +50,17 @@ class StandardItem(QStandardItem):
         return arr[0].rstrip()
 
 
-class Document(object):
-    afterOpen = pyqtSignal()
-    commentChange = pyqtSignal()
+class Document(QObject):
+    commentChanged = pyqtSignal()
+    curItemChanged = pyqtSignal(StandardItem)
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: str, rootNode: StandardItem) -> None:
+        super(Document, self).__init__() 
         self.tempdir = None
         self.filename = filename
+        self.rootNode = rootNode
+        self.isDirty = False
+        self.curItem: StandardItem = rootNode
         self.comment_icon = QIcon('image/comment.png')
 
     def open(self):
@@ -89,6 +93,8 @@ class Document(object):
                 func = FunctionData()
                 func.assign(v)
                 func.offset = k  # 偏移量还是需要保存
+                if not hasattr(func, 'comment'):
+                    func.comment = ''
                 functionDict[k] = func
             return breakpoints, functionDict
 
@@ -116,11 +122,11 @@ class Document(object):
             source = functionData.content()  # 从源代码读入数据
         return source
 
-    def fill_tree(self, rootNode: StandardItem) -> None:
+    def fill_tree(self) -> None:
         treefname = Path(self.tempdir.name).joinpath('tree.txt')
         with open(treefname, 'r', encoding='utf-8') as f:
             data = f.readlines()
-            stack = [(-1, rootNode)]
+            stack = [(-1, self.rootNode)]
 
             for line in data:
                 depth, id, fname = self.__split_line(line)
@@ -144,7 +150,7 @@ class Document(object):
                 preNode.appendRow(node)
                 stack.append((depth, node))
 
-    def save(self, rootNode: StandardItem) -> None:
+    def save(self) -> None:
         src_dir = Path(self.tempdir.name).joinpath('code')
         if not src_dir.exists():
             Path(src_dir).mkdir()
@@ -155,7 +161,7 @@ class Document(object):
 
         lines = []
         stack = []
-        stack.append((rootNode, -1))
+        stack.append((self.rootNode, -1))
         while stack:
             elem = stack[-1][0]
             depth = stack[-1][1]
@@ -172,6 +178,7 @@ class Document(object):
         with open(Path(self.tempdir.name).joinpath('tree.txt').absolute(), 'w', encoding='utf-8') as f:
             f.writelines(lines)
         zipDir(self.tempdir.name, self.filename)
+        self.isDirty = False  # 文件保存后重新设置标记
 
     def save_elem(self, elem: StandardItem) -> None:
         src_filename = Path(self.tempdir.name).joinpath(
@@ -191,3 +198,23 @@ class Document(object):
         else:
             if cmt_filename.exists():
                 cmt_filename.unlink()
+
+    def onCommentChanged(self, comment: str):
+        if not self.curItem.functionData:
+            return
+
+        if self.curItem.functionData.comment != comment:
+            self.curItem.functionData.comment = comment
+            self.isDirty = True
+
+    def onSelectionChanged(self, selected, deselected) -> None:
+        " Slot is called when the selection has been changed "
+        if not selected.indexes():
+            return
+
+        selectedIndex = selected.indexes()[0]
+        self.curItem = selectedIndex.model().itemFromIndex(selectedIndex)
+        self.curItemChanged.emit(self.curItem)
+
+    def getCurItem(self) -> StandardItem:
+        return self.curItem

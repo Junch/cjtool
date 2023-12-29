@@ -19,29 +19,15 @@ class CommentEdit(QPlainTextEdit):
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
         self.textChanged.connect(self.textChangedAction)
-        self.functionData = None
+        self.curDocument = None
 
-    def selectionChanged(self, selected, deselected) -> None:
-        " Slot is called when the selection has been changed "
-        if not selected.indexes():
-            self.setPlainText('')
-            return
+    def setDocument(self, doc: Document):
+        self.curDocument = doc
+        doc.curItemChanged.connect(self.onCurItemChanged)
+        self.commentChanged.connect(doc.onCommentChanged)
 
-        selectedIndex = selected.indexes()[0]
-        item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
-        if not item.functionData:
-            return
-
-        # 如果前面的数据修改了，保存数据
-        if self.functionData:
-            if self.document().isModified():
-                comment = self.toPlainText()
-                self.functionData.comment = comment
-                self.document().setModified(False)
-
-        self.functionData = item.functionData
-        comment = self.functionData.comment if hasattr(
-            self.functionData, 'comment') else ''
+    def onCurItemChanged(self, item: StandardItem) -> None:
+        comment = item.functionData.comment
         self.setPlainText(comment)
 
     def beforeSave(self, data: FunctionData):

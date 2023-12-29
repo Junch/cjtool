@@ -3,7 +3,7 @@ from gui.CallStackView import CallStackView, StandardItem
 from gui.SourceEdit import SourceEdit
 from gui.CommentEdit import CommentEdit
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QMainWindow, QWidget, \
+from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, \
     QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
@@ -56,8 +56,6 @@ class MainWindow(QMainWindow):
         docker.setWidget(source_edit)
         docker.setTitleBarWidget(QWidget())
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docker)
-        self.tree_view.selectionModel().selectionChanged.connect(
-            source_edit.selectionChanged)
         self.source_edit: SourceEdit = source_edit
         return docker
 
@@ -69,21 +67,18 @@ class MainWindow(QMainWindow):
                            QDockWidget.DockWidgetFeature.DockWidgetMovable)
         self.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, docker)
-        self.tree_view.selectionModel().selectionChanged.connect(
-            comment_edit.selectionChanged)
         self.comment_docker = docker
         self.comment_edit = comment_edit
         comment_edit.commentChanged.connect(self.tree_view.onCommentChanged)
-        self.beforeSave.connect(comment_edit.beforeSave)
         return docker
 
-    def _fillContent(self, rootNode) -> None:
-        filepath = ''
-        if (len(sys.argv) == 2):
-            filepath = adjust_file_path(sys.argv[1])
+    # def _fillContent(self, rootNode) -> None:
+    #     filepath = ''
+    #     if (len(sys.argv) == 2):
+    #         filepath = adjust_file_path(sys.argv[1])
 
-        if filepath:
-            self._parse_file(rootNode, filepath)
+    #     if filepath:
+    #         self._parse_file(rootNode, filepath)
 
     def _createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -97,6 +92,10 @@ class MainWindow(QMainWindow):
         saveAct.triggered.connect(self._save_file)
         fileMenu.addAction(saveAct)
 
+        closeAct = QAction('&Close', self)
+        closeAct.triggered.connect(self._close_file)
+        fileMenu.addAction(closeAct)
+
         viewMenu = menuBar.addMenu('&View')
         showAct = QAction('&Comment Window', self)
         showAct.triggered.connect(self._show_comment)
@@ -108,12 +107,20 @@ class MainWindow(QMainWindow):
         statusBar.showMessage('')
 
     def _save_file(self) -> None:
-        # 保存代码到零时目录
-        functionData = self.tree_view.getCurrentFunctionData()
-        self.beforeSave.emit(functionData)
-        model = self.tree_view.model()
-        rootNode = model.invisibleRootItem()
-        self.document.save(rootNode)
+        self.document.save()
+
+    def _close_file(self) -> None:
+        if self.document.isDirty:
+            reply = QMessageBox.warning(self, 'File is modified but not saved',
+                                        'Yes to Save, No to Ignore', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if reply == QMessageBox.StandardButton.Yes:
+                self.document.save()
+
+        self.document.close()
+        self.document = None
+        self.tree_view.clear()
+        self.source_edit.clear()
+        self.comment_edit.clear()
 
     def _open_file(self) -> None:
         if self.document:
@@ -123,15 +130,17 @@ class MainWindow(QMainWindow):
             self, 'Open cst file', '', 'cst Files (*.cst)')
         if filename:
             self.setWindowTitle(f"CodeBook: {Path(filename).stem}")
-            self.tree_view.clear()
             rootNode = self.tree_view.model().invisibleRootItem()
 
-            self.document = Document(filename)
+            self.document = Document(filename, rootNode)
             self.document.open()
-            self.document.fill_tree(rootNode)
+            self.document.fill_tree()
 
             self.tree_view.expandAll()
             self.source_edit.setDocument(self.document)
+            self.comment_edit.setDocument(self.document)
+            self.tree_view.selectionModel().selectionChanged.connect(
+                self.document.onSelectionChanged)
 
     def _show_comment(self) -> None:
         visible = self.comment_docker.isVisible()

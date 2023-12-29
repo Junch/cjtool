@@ -107,18 +107,9 @@ class SourceEdit(QPlainTextEdit):
 
     def setDocument(self, doc: Document):
         self.document: Document = doc
+        self.document.curItemChanged.connect(self.onCurItemChanged)
 
-    def selectionChanged(self, selected, deselected) -> None:
-        " Slot is called when the selection has been changed "
-        if not selected.indexes():
-            self.setPlainText('')
-            return
-
-        selectedIndex = selected.indexes()[0]
-        item: StandardItem = selectedIndex.model().itemFromIndex(selectedIndex)
-        if not item.functionData:
-            return
-
+    def onCurItemChanged(self, item: StandardItem) -> None:
         content = self.document.get_source(item.functionData)
         self.setPlainText(content)
 

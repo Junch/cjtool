@@ -17,6 +17,7 @@ class CallStackView(QTreeView):
         self.comment_icon = QIcon('image/comment.png')
 
     def clear(self):
+        self.selectionModel().selectionChanged.disconnect()
         self.model().beginResetModel()
         rowCount = self.model().rowCount()
         for i in range(rowCount):
