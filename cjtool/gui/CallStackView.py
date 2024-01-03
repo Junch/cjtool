@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.Qt import QIcon
 from debuger import FunctionData
 from gui.Document import StandardItem
+from pathlib import Path
 
 
 class CallStackView(QTreeView):
@@ -14,7 +15,8 @@ class CallStackView(QTreeView):
         self.setSelectionMode(
             QAbstractItemView.SelectionMode.ContiguousSelection)
         self.bStyleSheetNone = False
-        self.comment_icon = QIcon('image/comment.png')
+        comment_path = str((Path(__file__).parent.parent/'image/logo.png').absolute())
+        self.comment_icon = QIcon(comment_path)
 
     def clear(self):
         self.selectionModel().selectionChanged.disconnect()

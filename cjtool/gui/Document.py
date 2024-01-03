@@ -61,7 +61,8 @@ class Document(QObject):
         self.rootNode = rootNode
         self.isDirty = False
         self.curItem: StandardItem = rootNode
-        self.comment_icon = QIcon('image/comment.png')
+        comment_path = str((Path(__file__).parent.parent/'image/logo.png').absolute())
+        self.comment_icon = QIcon(comment_path)
 
     def open(self):
         zf = zipfile.ZipFile(self.filename)

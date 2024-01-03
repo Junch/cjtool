@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
         self.tree_view.clear()
         self.source_edit.clear()
         self.comment_edit.clear()
+        self.setWindowTitle(f"CodeBook")
 
     def _open_file(self) -> None:
         if self.document:
