@@ -1,7 +1,6 @@
 import sys
 from gui.MainWindow import MainWindow
 from PyQt5 import QtCore
-import qdarkstyle
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 import ctypes
@@ -18,7 +17,6 @@ def main():
     app.setWindowIcon(QIcon(logo_path))
 
     demo = MainWindow()
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     demo.show()
     sys.exit(app.exec_())
 

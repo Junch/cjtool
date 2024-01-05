@@ -34,8 +34,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('CodeBook')
         self.resize(1200, 900)
 
-        self._createMenuBar()
-
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
         self.tree_view = CallStackView()
@@ -48,6 +46,7 @@ class MainWindow(QMainWindow):
         comment_docker = self._addCommentDock()
         self.resizeDocks([source_docker, comment_docker], [
                          7, 3], Qt.Orientation.Vertical)
+        self._createMenuBar()
         self.document: Document = None
 
     def _addSourceDock(self):
@@ -97,9 +96,8 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(closeAct)
 
         viewMenu = menuBar.addMenu('&View')
-        showAct = QAction('&Comment Window', self)
-        showAct.triggered.connect(self._show_comment)
-        viewMenu.addAction(showAct)
+        toggleAction = self.comment_docker.toggleViewAction()
+        viewMenu.addAction(toggleAction)
 
         helpMenu = menuBar.addMenu('&Help')
         statusBar = QStatusBar()
@@ -142,13 +140,6 @@ class MainWindow(QMainWindow):
             self.comment_edit.setDocument(self.document)
             self.tree_view.selectionModel().selectionChanged.connect(
                 self.document.onSelectionChanged)
-
-    def _show_comment(self) -> None:
-        visible = self.comment_docker.isVisible()
-        if visible:
-            self.comment_docker.hide()
-        else:
-            self.comment_docker.show()
 
     def selectionChanged(self, selected, deselected) -> None:
         if not selected.indexes():
