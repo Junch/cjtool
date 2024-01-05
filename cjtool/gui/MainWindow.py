@@ -1,13 +1,13 @@
 from debuger import FunctionData
-from gui.CallStackView import CallStackView, StandardItem
-from gui.SourceEdit import SourceEdit
-from gui.CommentEdit import CommentEdit
+from .CallStackView import CallStackView, StandardItem
+from .SourceEdit import SourceEdit
+from .CommentEdit import CommentEdit
+from .Document import Document
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, \
     QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QStandardItemModel
 from pathlib import Path
-from gui.Document import Document
 import sys
 
 

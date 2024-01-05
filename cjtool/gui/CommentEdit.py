@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QPlainTextEdit
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtCore import pyqtSignal
 from debuger import FunctionData
-from gui.Document import StandardItem, Document
+from .Document import StandardItem, Document
 
 
 class CommentEdit(QPlainTextEdit):
