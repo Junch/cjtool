@@ -51,7 +51,7 @@ class StandardItem(QStandardItem):
 
 
 class Document(QObject):
-    commentChanged = pyqtSignal()
+    contentChanged = pyqtSignal()
     curItemChanged = pyqtSignal(StandardItem)
 
     def __init__(self, filename: str, rootNode: StandardItem) -> None:
@@ -180,6 +180,7 @@ class Document(QObject):
             f.writelines(lines)
         zipDir(self.tempdir.name, self.filename)
         self.isDirty = False  # 文件保存后重新设置标记
+        self.contentChanged.emit()
 
     def save_elem(self, elem: StandardItem) -> None:
         src_filename = Path(self.tempdir.name).joinpath(
@@ -207,6 +208,7 @@ class Document(QObject):
         if self.curItem.functionData.comment != comment:
             self.curItem.functionData.comment = comment
             self.isDirty = True
+            self.contentChanged.emit()
 
     def onSelectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "

@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
             self.tree_view.expandAll()
             self.source_edit.setDocument(self.document)
             self.comment_edit.setDocument(self.document)
+            self.document.contentChanged.connect(self.onContentChanged)
             self.tree_view.selectionModel().selectionChanged.connect(
                 self.document.onSelectionChanged)
 
@@ -154,3 +155,12 @@ class MainWindow(QMainWindow):
         filefullpath = item.functionData.fileName
         self.statusBar().showMessage(
             f"{filefullpath}({item.functionData.startLineNumber})")
+
+    def onContentChanged(self):
+        if not self.document:
+            return
+        filename = self.document.filename
+        if self.document.isDirty:
+            self.setWindowTitle(f"CodeBook: {Path(filename).stem} *")
+        else:
+            self.setWindowTitle(f"CodeBook: {Path(filename).stem}")
