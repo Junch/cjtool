@@ -4,11 +4,9 @@ from .SourceEdit import SourceEdit
 from .CommentEdit import CommentEdit
 from .Document import Document
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, \
-    QStatusBar, QFileDialog, QAction, QDockWidget
-from PyQt5.QtGui import QStandardItemModel
+from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QStatusBar, QFileDialog, QAction, QDockWidget
+from PyQt5.QtGui import QCloseEvent
 from pathlib import Path
-import sys
 
 
 def keystoint(x):
@@ -37,7 +35,6 @@ class MainWindow(QMainWindow):
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
         self.tree_view = CallStackView()
-        self.tree_view.setModel(QStandardItemModel())
         self.tree_view.selectionModel().selectionChanged.connect(self.selectionChanged)
         self.setCentralWidget(self.tree_view)
         self.setContentsMargins(4, 0, 4, 0)
@@ -48,6 +45,13 @@ class MainWindow(QMainWindow):
                          7, 3], Qt.Orientation.Vertical)
         self._createMenuBar()
         self.document: Document = None
+
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self._close_file()
+        if self.document:
+            a0.ignore()
+        else:
+            super().closeEvent(a0)
 
     def _addSourceDock(self):
         source_edit = SourceEdit()
@@ -108,11 +112,16 @@ class MainWindow(QMainWindow):
         self.document.save()
 
     def _close_file(self) -> None:
+        if not self.document:
+            return
+
         if self.document.isDirty:
             reply = QMessageBox.warning(self, 'File is modified but not saved',
-                                        'Yes to Save, No to Ignore', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-            if reply == QMessageBox.StandardButton.Yes:
+                                        'Yes to Save, No to Ignore', QMessageBox.Yes | QMessageBox.No | QMessageBox.Abort, QMessageBox.Yes)
+            if reply == QMessageBox.Yes:
                 self.document.save()
+            elif reply == QMessageBox.Abort:
+                return
 
         self.document.close()
         self.document = None
@@ -123,7 +132,9 @@ class MainWindow(QMainWindow):
 
     def _open_file(self) -> None:
         if self.document:
-            self.document.close()
+            self._close_file()
+            if self.document:
+                return
 
         filename, _ = QFileDialog.getOpenFileName(
             self, 'Open cst file', '', 'cst Files (*.cst)')

@@ -31,6 +31,7 @@ class FunctionData:
         self.startLineNumber = 0   # 函数开始行
         self.endLineNumber = 0     # 函数结束行
         self.comment = ''          # 代码点评
+        self.source = ''           # 源代码
 
     def content(self) -> str:
         # 确定函数名所在的行

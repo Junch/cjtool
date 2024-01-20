@@ -55,13 +55,14 @@ class Document(QObject):
     curItemChanged = pyqtSignal(StandardItem)
 
     def __init__(self, filename: str, rootNode: StandardItem) -> None:
-        super(Document, self).__init__() 
+        super(Document, self).__init__()
         self.tempdir = None
         self.filename = filename
         self.rootNode = rootNode
         self.isDirty = False
         self.curItem: StandardItem = rootNode
-        comment_path = str((Path(__file__).parent.parent/'image/logo.png').absolute())
+        comment_path = str(
+            (Path(__file__).parent.parent/'image/comment.png').absolute())
         self.comment_icon = QIcon(comment_path)
 
     def open(self):
@@ -113,9 +114,12 @@ class Document(QObject):
         return depth, id, fname
 
     def get_source(self, functionData: FunctionData) -> str:
+        if hasattr(functionData, 'source'):
+            return functionData.source
+
         source = ''
         src_filename = Path(self.tempdir.name).joinpath(
-            'code', f"{functionData.offset}.cpp")
+            f'code/{functionData.offset}.cpp')
         if src_filename.exists():
             with open(src_filename.absolute(), 'r', encoding='utf-8') as f:
                 source = f.read()
@@ -183,15 +187,20 @@ class Document(QObject):
         self.contentChanged.emit()
 
     def save_elem(self, elem: StandardItem) -> None:
+        functionData = elem.functionData
+
         src_filename = Path(self.tempdir.name).joinpath(
-            'code').joinpath(f"{elem.offset}.cpp")
+            f'code/{elem.offset}.cpp')
         if not src_filename.exists():
             with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
-                content = elem.functionData.content()
+                content = functionData.content()
+                f.write(content)
+        elif hasattr(functionData, 'source'):
+            with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
+                content = functionData.source
                 f.write(content)
 
-        comment = elem.functionData.comment if hasattr(
-            elem.functionData, 'comment') else ''
+        comment = functionData.comment if hasattr(functionData, 'comment') else ''
         cmt_filename = Path(self.tempdir.name).joinpath(
             'comment').joinpath(f"{elem.offset}.txt")
         if comment:
@@ -202,6 +211,9 @@ class Document(QObject):
                 cmt_filename.unlink()
 
     def onCommentChanged(self, comment: str):
+        if not hasattr(self.curItem, 'functionData'):
+            return
+
         if not self.curItem.functionData:
             return
 
@@ -209,6 +221,17 @@ class Document(QObject):
             self.curItem.functionData.comment = comment
             self.isDirty = True
             self.contentChanged.emit()
+
+    def onSourceChanged(self, source: str):
+        if not hasattr(self.curItem, 'functionData'):
+            return
+
+        if not self.curItem.functionData:
+            return
+
+        self.curItem.functionData.source = source
+        self.isDirty = True
+        self.contentChanged.emit()
 
     def onSelectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "

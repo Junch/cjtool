@@ -19,6 +19,7 @@ class CommentEdit(QPlainTextEdit):
         width = QFontMetrics(font).averageCharWidth()
         self.setTabStopDistance(4 * width)
         self.textChanged.connect(self.textChangedAction)
+        self.isItemChanged = False
         self.curDocument = None
 
     def setDocument(self, doc: Document):
@@ -27,8 +28,10 @@ class CommentEdit(QPlainTextEdit):
         self.commentChanged.connect(doc.onCommentChanged)
 
     def onCurItemChanged(self, item: StandardItem) -> None:
+        self.isItemChanged = True
         comment = item.functionData.comment
         self.setPlainText(comment)
+        self.isItemChanged = False
 
     def beforeSave(self, data: FunctionData):
         if self.document().isModified():
@@ -37,5 +40,8 @@ class CommentEdit(QPlainTextEdit):
             self.document().setModified(False)
 
     def textChangedAction(self):
+        if self.isItemChanged:
+            return
+
         comment = self.toPlainText()
         self.commentChanged.emit(comment)

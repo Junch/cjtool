@@ -1,5 +1,6 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
+from PyQt5.QtGui import QStandardItemModel
 from PyQt5.Qt import QIcon
 from debuger import FunctionData
 from .Document import StandardItem
@@ -14,8 +15,12 @@ class CallStackView(QTreeView):
         self.customContextMenuRequested.connect(self._rightClickMenu)
         self.setSelectionMode(
             QAbstractItemView.SelectionMode.ContiguousSelection)
+        model = QStandardItemModel()
+        self.setModel(model)
         self.bStyleSheetNone = False
-        comment_path = str((Path(__file__).parent.parent/'image/logo.png').absolute())
+
+        comment_path = str(
+            (Path(__file__).parent.parent/'image/comment.png').absolute())
         self.comment_icon = QIcon(comment_path)
 
     def clear(self):

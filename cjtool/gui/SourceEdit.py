@@ -1,9 +1,10 @@
 from PyQt5.QtGui import QFont, QFontMetrics, QColor
 from .Document import StandardItem, Document
 from PyQt5.Qsci import QsciScintilla, QsciLexerCPP
-
+from PyQt5.QtCore import pyqtSignal
 
 class SourceEdit(QsciScintilla):
+    sourceChanged = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(SourceEdit, self).__init__(parent)
@@ -14,7 +15,6 @@ class SourceEdit(QsciScintilla):
         font.setFixedPitch(True)
         font.setPointSize(10)
         self.setFont(font)
-        self.setMarginsFont(font)
         self.setUtf8(True)
 
         # Margin 0 is used for line numbers
@@ -56,11 +56,22 @@ class SourceEdit(QsciScintilla):
 
         # not too small
         self.setMinimumSize(600, 450)
+        self.textChanged.connect(self.onTextChanged)
+        self.isItemChanged = False
 
     def setDocument(self, doc: Document):
         self.document: Document = doc
         self.document.curItemChanged.connect(self.onCurItemChanged)
+        self.sourceChanged.connect(doc.onSourceChanged)
 
     def onCurItemChanged(self, item: StandardItem) -> None:
+        self.isItemChanged = True
         content = self.document.get_source(item.functionData)
         self.setText(content)
+        self.isItemChanged = False
+
+    def onTextChanged(self) -> None:
+        if self.isItemChanged:
+            return
+
+        self.sourceChanged.emit(self.text())
