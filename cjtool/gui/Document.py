@@ -233,6 +233,16 @@ class Document(QObject):
         self.isDirty = True
         self.contentChanged.emit()
 
+    def onCallStackChanged(self):
+        if not hasattr(self.curItem, 'functionData'):
+            return
+
+        if not self.curItem.functionData:
+            return
+
+        self.isDirty = True
+        self.contentChanged.emit()
+
     def onSelectionChanged(self, selected, deselected) -> None:
         " Slot is called when the selection has been changed "
         if not selected.indexes():

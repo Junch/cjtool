@@ -33,12 +33,6 @@ class CommentEdit(QPlainTextEdit):
         self.setPlainText(comment)
         self.isItemChanged = False
 
-    def beforeSave(self, data: FunctionData):
-        if self.document().isModified():
-            comment = self.toPlainText()
-            data.comment = comment
-            self.document().setModified(False)
-
     def textChangedAction(self):
         if self.isItemChanged:
             return

@@ -25,8 +25,6 @@ def adjust_file_path(filename: str) -> str:
 
 
 class MainWindow(QMainWindow):
-    beforeSave = pyqtSignal(FunctionData)
-
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle('CodeBook')
@@ -149,6 +147,7 @@ class MainWindow(QMainWindow):
             self.tree_view.expandAll()
             self.source_edit.setDocument(self.document)
             self.comment_edit.setDocument(self.document)
+            self.tree_view.setDocument(self.document)
             self.document.contentChanged.connect(self.onContentChanged)
             self.tree_view.selectionModel().selectionChanged.connect(
                 self.document.onSelectionChanged)

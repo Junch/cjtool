@@ -3,11 +3,14 @@ from PyQt5.QtWidgets import QAbstractItemView, QApplication, QMenu, QTreeView
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.Qt import QIcon
 from debuger import FunctionData
-from .Document import StandardItem
+from .Document import StandardItem, Document
 from pathlib import Path
+from PyQt5.QtCore import pyqtSignal
 
 
 class CallStackView(QTreeView):
+    callStackChanged = pyqtSignal()
+
     def __init__(self) -> None:
         super().__init__()
         self.setHeaderHidden(True)
@@ -17,11 +20,16 @@ class CallStackView(QTreeView):
             QAbstractItemView.SelectionMode.ContiguousSelection)
         model = QStandardItemModel()
         self.setModel(model)
+        self.document = None
         self.bStyleSheetNone = False
 
         comment_path = str(
             (Path(__file__).parent.parent/'image/comment.png').absolute())
         self.comment_icon = QIcon(comment_path)
+
+    def setDocument(self, document: Document):
+        self.document = document
+        self.callStackChanged.connect(document.onCallStackChanged)
 
     def clear(self):
         self.selectionModel().selectionChanged.disconnect()
@@ -74,6 +82,7 @@ class CallStackView(QTreeView):
         while self.selectedIndexes():
             idx = self.selectedIndexes()[0]
             self.model().removeRow(idx.row(), idx.parent())
+        self.callStackChanged.emit()
 
     def _copyPath(self) -> None:
         index = self.selectedIndexes()[0]
