@@ -32,7 +32,6 @@ class CallStackView(QTreeView):
         self.callStackChanged.connect(document.onCallStackChanged)
 
     def clear(self):
-        self.selectionModel().selectionChanged.disconnect()
         self.model().beginResetModel()
         rowCount = self.model().rowCount()
         for i in range(rowCount):

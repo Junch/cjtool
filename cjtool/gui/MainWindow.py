@@ -3,7 +3,7 @@ from .CallStackView import CallStackView, StandardItem
 from .SourceEdit import SourceEdit
 from .CommentEdit import CommentEdit
 from .Document import Document
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QCloseEvent
 from pathlib import Path
@@ -93,9 +93,18 @@ class MainWindow(QMainWindow):
         saveAct.triggered.connect(self._save_file)
         fileMenu.addAction(saveAct)
 
+        saveAsAct = QAction('Save &As', self)
+        saveAsAct.triggered.connect(self._save_as_file)
+        fileMenu.addAction(saveAsAct)
+
         closeAct = QAction('&Close', self)
         closeAct.triggered.connect(self._close_file)
         fileMenu.addAction(closeAct)
+
+        fileMenu.addSeparator()
+        exitAct = QAction('&Exit', self)
+        exitAct.triggered.connect(self._exit)
+        fileMenu.addAction(exitAct)
 
         viewMenu = menuBar.addMenu('&View')
         toggleAction = self.comment_docker.toggleViewAction()
@@ -108,6 +117,17 @@ class MainWindow(QMainWindow):
 
     def _save_file(self) -> None:
         self.document.save()
+
+    def _save_as_file(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self, 'Save cst file', '', 'cst Files (*.cst)')
+        if filename:
+            self.document.save_as(filename)
+
+    def _exit(self):
+        self.close()
+        if not self.document:
+            QCoreApplication.instance().quit()
 
     def _close_file(self) -> None:
         if not self.document:

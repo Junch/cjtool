@@ -186,6 +186,10 @@ class Document(QObject):
         self.isDirty = False  # 文件保存后重新设置标记
         self.contentChanged.emit()
 
+    def save_as(self, filename: str):
+        self.filename = filename
+        self.save()
+
     def save_elem(self, elem: StandardItem) -> None:
         functionData = elem.functionData
 
