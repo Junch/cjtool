@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
         self.settings = QSettings('cjtool', 'codebook')
         self.recent_files: list = self.settings.value(
             'recent_files', [], 'QStringList')
-        self.recent_files_map = {}
 
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
@@ -92,21 +91,12 @@ class MainWindow(QMainWindow):
         fileMenu = menuBar.addMenu('&File')
 
         fileMenu.addAction('&Open ...').triggered.connect(self._open_file)
+        self.recentMenu = fileMenu.addMenu('Open Recent')
+        self._create_recent_files_menu()
         fileMenu.addAction('&Save').triggered.connect(self._save_file)
         fileMenu.addAction('Save &As ...').triggered.connect(
             self._save_as_file)
         fileMenu.addAction('&Close').triggered.connect(self._close_file)
-
-        if self.recent_files:
-            fileMenu.addSeparator()
-
-        def foo(file): return lambda: self._open_recent_file(file)
-        for file in self.recent_files:
-            filepath = os.path.normpath(file)
-            act = QAction(filepath, self)
-            act.triggered.connect(foo(file))
-            fileMenu.addAction(act)
-            self.recent_files_map[file] = act
 
         fileMenu.addSeparator()
         fileMenu.addAction('&Exit').triggered.connect(self._exit)
@@ -120,7 +110,22 @@ class MainWindow(QMainWindow):
         self.setStatusBar(statusBar)
         statusBar.showMessage('')
 
-        self.fileMenu = fileMenu
+    def _create_recent_files_menu(self) -> None:
+        self.recentMenu.clear()
+
+        if not self.recent_files:
+            return
+
+        def foo(file): return lambda: self._open_recent_file(file)
+        for file in self.recent_files:
+            filepath = os.path.normpath(file)
+            act = QAction(filepath, self)
+            act.triggered.connect(foo(file))
+            self.recentMenu.addAction(act)
+
+        self.recentMenu.addSeparator()
+        self.recentMenu.addAction('Clear Items').triggered.connect(
+            self._clear_recent_files)
 
     def _save_file(self) -> None:
         self.document.save()
@@ -130,6 +135,10 @@ class MainWindow(QMainWindow):
             self, 'Save cst file', '', 'cst Files (*.cst)')
         if filename:
             self.document.save_as(filename)
+            if filename in self.recent_files:
+                self.recent_files.remove(filename)
+            self.recent_files.insert(0, filename)
+            self._create_recent_files_menu()
 
     def _exit(self):
         self.close()
@@ -155,7 +164,7 @@ class MainWindow(QMainWindow):
         self.comment_edit.clear()
         self.setWindowTitle(f"CodeBook")
 
-    def _open_file(self, filename = None) -> None:
+    def _open_file(self, filename=None) -> None:
         if self.document:
             self._close_file()
             if self.document:
@@ -184,9 +193,11 @@ class MainWindow(QMainWindow):
             self.tree_view.setDocument(self.document)
             self.document.contentChanged.connect(self.onContentChanged)
 
-            if filename not in self.recent_files:
-                self.recent_files.append(filename)
-                # TODO insertAction to add the file name int the fileMenu
+            if filename in self.recent_files:
+                self.recent_files.remove(filename)
+            self.recent_files.insert(0, filename)
+
+            self._create_recent_files_menu()
 
     def _open_recent_file(self, filename) -> None:
         if not Path(filename).exists():
@@ -194,10 +205,13 @@ class MainWindow(QMainWindow):
                 self, 'CodeBook', f'File "{filename}" is not found', QMessageBox.Ok)
 
             self.recent_files.remove(filename)
-            if filename in self.recent_files_map:
-                self.fileMenu.removeAction(self.recent_files_map[filename])
+            self._create_recent_files_menu()
         else:
             self._open_file(filename)
+
+    def _clear_recent_files(self):
+        self.recent_files.clear()
+        self._create_recent_files_menu()
 
     def selectionChanged(self, selected, deselected) -> None:
         if not selected.indexes():
