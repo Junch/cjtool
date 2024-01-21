@@ -1,12 +1,12 @@
-from debuger import FunctionData
 from .CallStackView import CallStackView, StandardItem
 from .SourceEdit import SourceEdit
 from .CommentEdit import CommentEdit
 from .Document import Document
-from PyQt5.QtCore import Qt, QCoreApplication
+from PyQt5.QtCore import Qt, QCoreApplication, QSettings
 from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QStatusBar, QFileDialog, QAction, QDockWidget
 from PyQt5.QtGui import QCloseEvent
 from pathlib import Path
+import os
 
 
 def keystoint(x):
@@ -30,6 +30,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('CodeBook')
         self.resize(1200, 900)
 
+        self.settings = QSettings('cjtool', 'codebook')
+        self.recent_files: list = self.settings.value(
+            'recent_files', [], 'QStringList')
+        self.recent_files_map = {}
+
         # You can't set a QLayout directly on the QMainWindow. You need to create a QWidget
         # and set it as the central widget on the QMainWindow and assign the QLayout to that.
         self.tree_view = CallStackView()
@@ -45,6 +50,7 @@ class MainWindow(QMainWindow):
         self.document: Document = None
 
     def closeEvent(self, a0: QCloseEvent) -> None:
+        self.settings.setValue('recent_files', self.recent_files)
         self._close_file()
         if self.document:
             a0.ignore()
@@ -85,26 +91,25 @@ class MainWindow(QMainWindow):
         menuBar = self.menuBar()
         fileMenu = menuBar.addMenu('&File')
 
-        openAct = QAction('&Open', self)
-        openAct.triggered.connect(self._open_file)
-        fileMenu.addAction(openAct)
+        fileMenu.addAction('&Open ...').triggered.connect(self._open_file)
+        fileMenu.addAction('&Save').triggered.connect(self._save_file)
+        fileMenu.addAction('Save &As ...').triggered.connect(
+            self._save_as_file)
+        fileMenu.addAction('&Close').triggered.connect(self._close_file)
 
-        saveAct = QAction('&Save', self)
-        saveAct.triggered.connect(self._save_file)
-        fileMenu.addAction(saveAct)
+        if self.recent_files:
+            fileMenu.addSeparator()
 
-        saveAsAct = QAction('Save &As', self)
-        saveAsAct.triggered.connect(self._save_as_file)
-        fileMenu.addAction(saveAsAct)
-
-        closeAct = QAction('&Close', self)
-        closeAct.triggered.connect(self._close_file)
-        fileMenu.addAction(closeAct)
+        def foo(file): return lambda: self._open_recent_file(file)
+        for file in self.recent_files:
+            filepath = os.path.normpath(file)
+            act = QAction(filepath, self)
+            act.triggered.connect(foo(file))
+            fileMenu.addAction(act)
+            self.recent_files_map[file] = act
 
         fileMenu.addSeparator()
-        exitAct = QAction('&Exit', self)
-        exitAct.triggered.connect(self._exit)
-        fileMenu.addAction(exitAct)
+        fileMenu.addAction('&Exit').triggered.connect(self._exit)
 
         viewMenu = menuBar.addMenu('&View')
         toggleAction = self.comment_docker.toggleViewAction()
@@ -114,6 +119,8 @@ class MainWindow(QMainWindow):
         statusBar = QStatusBar()
         self.setStatusBar(statusBar)
         statusBar.showMessage('')
+
+        self.fileMenu = fileMenu
 
     def _save_file(self) -> None:
         self.document.save()
@@ -148,14 +155,21 @@ class MainWindow(QMainWindow):
         self.comment_edit.clear()
         self.setWindowTitle(f"CodeBook")
 
-    def _open_file(self) -> None:
+    def _open_file(self, filename = None) -> None:
         if self.document:
             self._close_file()
             if self.document:
                 return
 
-        filename, _ = QFileDialog.getOpenFileName(
-            self, 'Open cst file', '', 'cst Files (*.cst)')
+        if filename:
+            if not Path(filename).exists():
+                QMessageBox.warning(
+                    self, 'CodeBook', f'File "{filename}" is not found', QMessageBox.Ok)
+                return
+        else:
+            filename, _ = QFileDialog.getOpenFileName(
+                self, 'Open cst file', '', 'cst Files (*.cst)')
+
         if filename:
             self.setWindowTitle(f"CodeBook: {Path(filename).stem}")
             rootNode = self.tree_view.model().invisibleRootItem()
@@ -169,8 +183,21 @@ class MainWindow(QMainWindow):
             self.comment_edit.setDocument(self.document)
             self.tree_view.setDocument(self.document)
             self.document.contentChanged.connect(self.onContentChanged)
-            self.tree_view.selectionModel().selectionChanged.connect(
-                self.document.onSelectionChanged)
+
+            if filename not in self.recent_files:
+                self.recent_files.append(filename)
+                # TODO insertAction to add the file name int the fileMenu
+
+    def _open_recent_file(self, filename) -> None:
+        if not Path(filename).exists():
+            QMessageBox.warning(
+                self, 'CodeBook', f'File "{filename}" is not found', QMessageBox.Ok)
+
+            self.recent_files.remove(filename)
+            if filename in self.recent_files_map:
+                self.fileMenu.removeAction(self.recent_files_map[filename])
+        else:
+            self._open_file(filename)
 
     def selectionChanged(self, selected, deselected) -> None:
         if not selected.indexes():

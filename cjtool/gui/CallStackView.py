@@ -30,6 +30,7 @@ class CallStackView(QTreeView):
     def setDocument(self, document: Document):
         self.document = document
         self.callStackChanged.connect(document.onCallStackChanged)
+        self.selectionModel().selectionChanged.connect(document.onSelectionChanged)
 
     def clear(self):
         self.model().beginResetModel()
