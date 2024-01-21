@@ -1,6 +1,5 @@
 import sys
 from gui.MainWindow import MainWindow
-from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon, QFontDatabase
 from pathlib import Path
@@ -13,7 +12,6 @@ def main():
         appid = 'cjtool.codebook.1.0'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
     finally:
-        QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
         app = QApplication(sys.argv)
         logo_path = str((Path(__file__).parent/'image/logo.png').absolute())
         app.setWindowIcon(QIcon(logo_path))
