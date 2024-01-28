@@ -97,6 +97,8 @@ class Document(QObject):
                 func.offset = k  # 偏移量还是需要保存
                 if not hasattr(func, 'comment'):
                     func.comment = ''
+                if not hasattr(func, 'source'):
+                    func.source = ''
                 functionDict[k] = func
             return breakpoints, functionDict
 
@@ -114,7 +116,7 @@ class Document(QObject):
         return depth, id, fname
 
     def get_source(self, functionData: FunctionData) -> str:
-        if hasattr(functionData, 'source'):
+        if functionData.source:
             return functionData.source
 
         source = ''
@@ -164,6 +166,7 @@ class Document(QObject):
         if not comment_dir.exists():
             Path(comment_dir).mkdir()
 
+        saved_elems = set()
         lines = []
         stack = []
         stack.append((self.rootNode, -1))
@@ -174,7 +177,9 @@ class Document(QObject):
             if hasattr(elem, 'functionData'):
                 lines.append(
                     '\t'*depth + f"{elem.id} {elem.functionData.funtionName}\n")
-                self.save_elem(elem)
+                if elem.functionData.offset not in saved_elems:
+                    self.save_elem(elem)
+                    saved_elems.add(elem.functionData.offset)
 
             for row in range(elem.rowCount() - 1, -1, -1):
                 child = elem.child(row, 0)
@@ -195,14 +200,16 @@ class Document(QObject):
 
         src_filename = Path(self.tempdir.name).joinpath(
             f'code/{elem.offset}.cpp')
-        if not src_filename.exists():
-            with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
-                content = functionData.content()
-                f.write(content)
-        elif hasattr(functionData, 'source'):
+
+        if functionData.source:
             with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
                 content = functionData.source
                 f.write(content)
+        else:
+            if not src_filename.exists():
+                with open(src_filename.absolute(), 'w', encoding='utf-8') as f:
+                    content = functionData.content()
+                    f.write(content)
 
         comment = functionData.comment if hasattr(functionData, 'comment') else ''
         cmt_filename = Path(self.tempdir.name).joinpath(
